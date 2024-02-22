@@ -6,7 +6,8 @@ C_SRC	:= $(shell find $(SRC_DIR) -name '*.c' -print)
 
 TARGET		:= libnet.so
 
-CFLAGS	:= -Wall -O3 -g -shared
+CFLAGS	:= -Wall -O3 -g -fPIC
+LDFLAGS	:= -shared
 
 # DPDK
 LIBDPDK_CFLAGS := $(shell pkg-config --cflags libdpdk)

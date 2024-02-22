@@ -4,24 +4,31 @@
 #include <stdint.h>
 
 /**
- * net_init - Setup network module
+ * net_init - Init network module
  * 
- * @param nr_cores: Number of cores to rx/tx packets
- * @param nr_rxq: Number of receive queue
- * @param nr_txq: Number of transmission queue
+ * @param nb_cores: Number of cores to rx/tx packets
+ * @param nb_rxq: Number of receive queue
+ * @param nb_txq: Number of transmission queue
  * 
  * @return Status: 0/-1
 */
-int net_init(int nr_cores, int nr_rxq, int nr_txq);
+int net_init(int nb_cores, int nb_rxq, int nb_txq);
+
+/**
+ * net_setup - Setup local network module
+ * 
+ * @param lcore_id: Core id
+ * 
+ * @return Status: 0/-1
+*/
+int net_setup(int lcore_id);
 
 /**
  * net_rx - Poll receive queue
  * 
- * @param qid: RX queue id
- * 
  * @return Number of packets received
 */
-int net_rx(int qid);
+int net_rx(void);
 
 /**
  * net_get_rxpkt - Get receive packet
@@ -35,11 +42,9 @@ uint8_t * net_get_rxpkt(int * pkt_len);
 /**
  * net_tx - Flush transmission queue
  * 
- * @param qid: RX queue id
- * 
  * @return Number of packets transmitted
 */
-int net_tx(int qid);
+int net_tx(void);
 
 /**
  * net_get_txpkt - Get transmit packet

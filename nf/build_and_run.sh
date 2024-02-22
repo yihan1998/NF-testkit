@@ -11,7 +11,7 @@ LIBRARY_PATH=../bindings/c cargo build
 # Check if build succeeded and run the project
 if [ $? -eq 0 ]; then
     echo "Build succeeded. Running the project..."
-    LD_LIBRARY_PATH=../bindings/c/ ./target/debug/dns-filter $@
+    sudo LD_LIBRARY_PATH=../bindings/c/ ./target/debug/nf $@
 else
     echo "Build failed."
 fi
