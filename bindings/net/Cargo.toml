@@ -1,12 +1,11 @@
 [package]
-name = "dns-filter"
+name = "net"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-core_affinity = "0.5.10"
-clap = "2.32.0"
-regex = "1.5.4"
-net = { path = "../bindings/net" }
+
+[build-dependencies]
+bindgen = "0.59.1"
