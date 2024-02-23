@@ -28,10 +28,10 @@ pub fn net_setup(lcore_id: i32) -> Result<(), i32> {
 }
 
 pub fn net_rx() -> i32 {
-    unsafe { ffi::net_tx() }
+    unsafe { ffi::net_rx() }
 }
 
-pub fn net_get_rxpkt(pkt_len: *mut i32) -> *mut u8 {
+pub fn net_get_rxpkt(pkt_len: *mut i32) -> *const u8 {
     unsafe { ffi::net_get_rxpkt(pkt_len) }
 }
 

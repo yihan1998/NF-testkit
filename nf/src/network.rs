@@ -1,96 +1,85 @@
-#[repr(C, packed)]
-#[derive(Copy, Clone)]
-struct EthernetFrame {
-    destination: [u8; 6],
-    source: [u8; 6],
-    ethertype: u16,
-    payload: NetworkLayerProtocol, // Nested network layer protocol
-}
+extern crate pnet;
 
-pub enum NetworkLayerProtocol {
-    ARP(ARPPacket),
-    IPv4(IPv4Packet),
-    IPv6(IPv6Packet),
-}
+use pnet::datalink::MacAddr;
+use pnet::packet::ethernet::EtherTypes;
 
-#[repr(C, packed)]
-#[derive(Copy, Clone)]
-struct ARPPacket {
-    hrd_type: u16,
-    pro_type: u16,
-    hrd_len: u8,
-    pro_len: u8,
-    op: u16,
-    sha: [u8; 6],
-    sip: [u8; 4],
-    tha: [u8; 6],
-    tip: [u8; 4],
-}
+use etherparse::*;
+use etherparse::{LinkSlice::*, NetSlice::*, TransportSlice::*, VlanSlice::*};
 
-#[repr(C, packed)]
-#[derive(Copy, Clone)]
-struct IPv4Packet {
-    version: u8,
-    ihl: u8,
-    total_length: u16,
-    protocol: u8,
-    source: [u8; 4],
-    destination: [u8; 4],
-    payload: TransportLayerProtocol, // Nested transport layer protocol
-}
+pub unsafe fn handle_packet(data: Vec<u8>) -> Result<(), i32> {
+    let packet = SlicedPacket::from_ethernet(&data);
 
-#[repr(C, packed)]
-#[derive(Copy, Clone)]
-struct IPv6Packet {
-    version: u8,
-    traffic_class: u8,
-    flow_label: u32,
-    payload_length: u16,
-    next_header: u8,
-    hop_limit: u8,
-    source: [u8; 16],
-    destination: [u8; 16],
-    payload: TransportLayerProtocol, // Nested transport layer protocol
-}
-
-pub enum TransportLayerProtocol {
-    TCP(TcpSegment),
-    UDP(UdpDatagram),
-}
-
-struct TcpSegment {
-    source_port: u16,
-    destination_port: u16,
-    sequence_number: u32,
-    acknowledgment_number: u32,
-    data_offset: u8,
-    flags: u16,
-    window_size: u16,
-    checksum: u16,
-    urgent_pointer: u16,
-    // TCP payload (e.g., application data) could be here
-}
-
-struct UdpDatagram {
-    source_port: u16,
-    destination_port: u16,
-    length: u16,
-    checksum: u16,
-    // UDP payload (e.g., application data) could be here
-}
-
-impl NetworkLayerProtocol {
-    pub fn handle_network_layer(&self) {
-        Ok(match *self {
-            NetworkLayerProtocol::ARPPacket => {
-
+    match packet {
+        Err(value) => println!("Err {:?}", value),
+        Ok(value) => {
+            match value.link {
+                Some(Ethernet2(value)) => println!(
+                    "  Ethernet2 {:?} => {:?}",
+                    value.source(),
+                    value.destination()
+                ),
+                Some(EtherPayload(payload)) => {
+                    println!("  EtherPayload (ether type {:?})", payload.ether_type)
+                }
+                None => {}
             }
-            NetworkLayerProtocol::IPv4Packet => {
 
+            match value.vlan {
+                Some(SingleVlan(value)) => println!("  SingleVlan {:?}", value.vlan_identifier()),
+                Some(DoubleVlan(value)) => println!(
+                    "  DoubleVlan {:?}, {:?}",
+                    value.outer().vlan_identifier(),
+                    value.inner().vlan_identifier()
+                ),
+                None => {}
             }
-            NetworkLayerProtocol::IPv6Packet => {
-                
+
+            match value.net {
+                Some(Ipv4(ipv4)) => {
+                    println!(
+                        "  Ipv4 {:?} => {:?}",
+                        ipv4.header().source_addr(),
+                        ipv4.header().destination_addr()
+                    );
+                    if false == ipv4.extensions().is_empty() {
+                        println!("    {:?}", ipv4.extensions());
+                    }
+                }
+                Some(Ipv6(ipv6)) => {
+                    println!(
+                        "  Ipv6 {:?} => {:?}",
+                        ipv6.header().source_addr(),
+                        ipv6.header().destination_addr()
+                    );
+                    if false == ipv6.extensions().is_empty() {
+                        println!("    {:?}", ipv6.extensions());
+                    }
+                }
+                None => {}
             }
-        })
+
+            match value.transport {
+                Some(Icmpv4(value)) => println!(" Icmpv4 {:?}", value),
+                Some(Icmpv6(value)) => println!(" Icmpv6 {:?}", value),
+                Some(Udp(value)) => println!(
+                    "  UDP {:?} -> {:?}",
+                    value.source_port(),
+                    value.destination_port()
+                ),
+                Some(Tcp(value)) => {
+                    println!(
+                        "  TCP {:?} -> {:?}",
+                        value.source_port(),
+                        value.destination_port()
+                    );
+                    let options: Vec<Result<TcpOptionElement, TcpOptionReadError>> =
+                        value.options_iterator().collect();
+                    println!("    {:?}", options);
+                }
+                None => {}
+            }
+        }
     }
+
+    return Ok(());
 }

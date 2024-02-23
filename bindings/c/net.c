@@ -1,4 +1,3 @@
-
 #include "net.h"
 
 #include <rte_eal.h>
@@ -50,12 +49,18 @@ __thread struct mbuf_table tx_mbufs;
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
-        .mq_mode    = ETH_MQ_RX_NONE,
+        .mq_mode    = ETH_MQ_RX_RSS,
         .split_hdr_size = 0,
     },
     .txmode = {
         .mq_mode    = ETH_MQ_TX_NONE,
     },
+    .rx_adv_conf = {
+		.rss_conf = {
+			.rss_key = NULL,
+			.rss_hf = RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP,
+		},
+	},
 };
 
 int net_init(int nb_cores, int nb_rxq, int nb_txq) {
@@ -118,6 +123,20 @@ int net_init(int nb_cores, int nb_rxq, int nb_txq) {
         rte_exit(EXIT_FAILURE, "Error during getting device (port %u) info: %s\n", pid, strerror(-ret));
     }
 
+    if (nb_rxq > 1 && nb_txq > 1) {
+        local_port_conf.rx_adv_conf.rss_conf.rss_key = NULL;
+        local_port_conf.rx_adv_conf.rss_conf.rss_hf &= dev_info.flow_type_rss_offloads;
+    } else {
+        local_port_conf.rx_adv_conf.rss_conf.rss_key = NULL;
+        local_port_conf.rx_adv_conf.rss_conf.rss_hf  = 0;
+    }
+
+    if (local_port_conf.rx_adv_conf.rss_conf.rss_hf != 0) {
+        local_port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
+    } else {
+        local_port_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
+    }
+
     if (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) {
         local_port_conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
     }
@@ -142,6 +161,8 @@ int net_init(int nb_cores, int nb_rxq, int nb_txq) {
     if (ret < 0) {
         rte_exit(EXIT_FAILURE, "Cannot adjust number of descriptors: err=%d, port=%u\n", ret, pid);
     }
+
+    printf("DPDK set up with %d rxq, %d txq\n", nb_rxq, nb_txq);
 
     /* init ont RX queue and TX queue for each core */
     rxq_conf = dev_info.default_rxconf;
