@@ -39,8 +39,8 @@ pub fn net_tx() -> i32 {
     unsafe { ffi::net_tx() }
 }
 
-pub fn net_get_txpkt(pkt_len: i32) -> *mut u8 {
-    unsafe { ffi::net_get_txpkt(pkt_len) }
+pub fn net_get_txpkt(len: i32) -> *mut u8 {
+    unsafe { ffi::net_get_txpkt(len) }
 }
 
 #[cfg(test)]

@@ -1,4 +1,5 @@
 #include "net.h"
+#include "netfmt.h"
 
 #include <rte_eal.h>
 #include <rte_ethdev.h>
@@ -28,12 +29,25 @@
 #include <rte_tcp.h>
 #include <rte_version.h>
 
+#include <errno.h>
+
 #define MAX_NR_CORES        16
 #define DEFAULT_PKT_BURST   32
 #define DEFAULT_RX_DESC     1024
 #define DEFAULT_TX_DESC     1024
 
 struct rte_mempool * mempools[MAX_NR_CORES];
+
+struct flow {
+    uint32_t src_ip;
+    uint32_t src_ip_mask;
+    uint32_t dst_ip;
+    uint32_t dst_ip_mask;
+    uint16_t src_port;
+    uint16_t src_port_mask;
+    uint16_t dst_port;
+    uint16_t dst_port_mask;
+};
 
 struct mbuf_table {
 	uint16_t next;
@@ -255,9 +269,275 @@ uint8_t * net_get_rxpkt(int * pkt_len) {
 }
 
 int net_tx(void) {
-    return 0;
+    int total_pkt, pkt_cnt;
+    struct rte_mbuf ** pkts;
+    int pid = 0;
+
+    pkts = tx_mbufs.m_table;
+    total_pkt = pkt_cnt = tx_mbufs.len;
+
+    if (pkt_cnt > 0) {
+        int ret;
+        do {
+            /* Send packets until there is none in TX queue */
+            ret = rte_eth_tx_burst(pid, qid, pkts, pkt_cnt);
+            pkts += ret;
+            pkt_cnt -= ret;
+        } while (pkt_cnt > 0);
+
+        tx_mbufs.len = 0;
+    }
+
+    return total_pkt;
 }
 
-uint8_t * net_get_txpkt(int pkt_len) {
-    return NULL;
+uint8_t * net_get_txpkt(int len) {
+    struct rte_mbuf * m;
+
+    if (unlikely(tx_mbufs.len == DEFAULT_PKT_BURST)) {
+        printf("TX buffer full\n");
+        return NULL;
+    }
+
+    m = rte_pktmbuf_alloc(lcore_mempool);
+    if (unlikely(m == NULL)) {
+        printf("No packet buffers found\n");
+        return NULL;
+    }
+
+    m->data_len = m->pkt_len = len;
+    m->next = NULL;
+    m->nb_segs = 1;
+
+    tx_mbufs.m_table[tx_mbufs.len++] = m;
+
+    return rte_pktmbuf_mtod(m, uint8_t *);
+}
+
+#define FULL_IP_MASK   0xffffffff /* full mask */
+#define EMPTY_IP_MASK  0x0 /* empty mask */
+
+#define FULL_PORT_MASK   0xffff /* full mask */
+#define PART_PORT_MASK   0xff00 /* partial mask */
+#define EMPTY_PORT_MASK  0x0 /* empty mask */
+
+#define MAX_PATTERN_NUM		4
+#define MAX_ACTION_NUM		2
+
+int net_create_tcp_flow(int rx_q, struct flow * fl) {
+    int port_id;
+    RTE_ETH_FOREACH_DEV(port_id) {
+        struct rte_flow_error error;
+        struct rte_flow_attr attr;
+        struct rte_flow_item pattern[MAX_PATTERN_NUM];
+        struct rte_flow_action action[MAX_ACTION_NUM];
+        struct rte_flow * flow = NULL;
+        struct rte_flow_action_queue queue = { .index = rx_q };
+        struct rte_flow_item_ipv4 ip_spec;
+        struct rte_flow_item_ipv4 ip_mask;
+        struct rte_flow_item_tcp tcp_spec;
+        struct rte_flow_item_tcp tcp_mask;
+        int res;
+
+        memset(pattern, 0, sizeof(pattern));
+        memset(action, 0, sizeof(action));
+
+        /*
+        * set the rule attribute.
+        * in this case only ingress packets will be checked.
+        */
+        memset(&attr, 0, sizeof(struct rte_flow_attr));
+        attr.ingress = 1;
+
+        /*
+        * create the action sequence.
+        * one action only,  move packet to queue
+        */
+        action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
+        action[0].conf = &queue;
+        action[1].type = RTE_FLOW_ACTION_TYPE_END;
+
+        /*
+        * set the first level of the pattern (ETH).
+        */
+        pattern[0].type = RTE_FLOW_ITEM_TYPE_ETH;
+
+        /*
+        * setting the second level of the pattern (IP).
+        */
+        memset(&ip_spec, 0, sizeof(struct rte_flow_item_ipv4));
+        memset(&ip_mask, 0, sizeof(struct rte_flow_item_ipv4));
+        ip_spec.hdr.dst_addr = htonl(fl->dst_ip);
+        ip_mask.hdr.dst_addr = htonl(fl->dst_ip_mask);
+        ip_spec.hdr.src_addr = htonl(fl->src_ip);
+        ip_mask.hdr.src_addr = htonl(fl->src_ip_mask);
+        pattern[1].type = RTE_FLOW_ITEM_TYPE_IPV4;
+        pattern[1].spec = &ip_spec;
+        pattern[1].mask = &ip_mask;
+
+        /*
+        * setting the third level of the pattern (TCP).
+        */
+        memset(&tcp_spec, 0, sizeof(struct rte_flow_item_tcp));
+        memset(&tcp_mask, 0, sizeof(struct rte_flow_item_tcp));
+        tcp_spec.hdr.dst_port = htons(fl->dst_port);
+        tcp_mask.hdr.dst_port = htons(fl->dst_port_mask);
+        tcp_spec.hdr.src_port = htons(fl->src_port);
+        tcp_mask.hdr.src_port = htons(fl->src_port_mask);
+        pattern[2].type = RTE_FLOW_ITEM_TYPE_TCP;
+        pattern[2].spec = &tcp_spec;
+        pattern[2].mask = &tcp_mask;
+
+        /* the final level must be always type end */
+        pattern[3].type = RTE_FLOW_ITEM_TYPE_END;
+
+        res = rte_flow_validate(port_id, &attr, pattern, action, &error);
+        if (!res) {
+retry:
+            flow = rte_flow_create(port_id, &attr, pattern, action, &error);
+            if (!flow) {
+                rte_flow_flush(port_id, &error);
+                goto retry;
+            }
+
+            uint32_t src_ip_masked, dst_ip_masked;
+            uint16_t src_port_masked, dst_port_masked;
+
+            src_ip_masked = fl->src_ip & fl->src_ip_mask;
+            dst_ip_masked = fl->dst_ip & fl->dst_ip_mask;
+            src_port_masked = fl->src_port & fl->src_port_mask;
+            dst_port_masked = fl->dst_port & fl->dst_port_mask;
+            printf("Create UDP flow from " IP_STRING ":%u(%x) to " IP_STRING ":%u(%x) by queue %d on port %d\n", \
+                        HOST_IP_FMT(src_ip_masked), src_port_masked, src_port_masked, \
+                        HOST_IP_FMT(dst_ip_masked), dst_port_masked, dst_port_masked, rx_q, port_id);
+        } else {
+            printf("Invalid flow rule! msg: %s\n", error.message);
+        }
+    }
+
+	return 0;
+}
+
+int net_create_udp_flow(int rx_q, struct flow * fl) {
+    int port_id;
+    RTE_ETH_FOREACH_DEV(port_id) {
+        struct rte_flow_error error;
+        struct rte_flow_attr attr;
+        struct rte_flow_item pattern[MAX_PATTERN_NUM];
+        struct rte_flow_action action[MAX_ACTION_NUM];
+        struct rte_flow * flow = NULL;
+        struct rte_flow_action_queue queue = { .index = rx_q };
+        struct rte_flow_item_ipv4 ip_spec;
+        struct rte_flow_item_ipv4 ip_mask;
+        struct rte_flow_item_udp udp_spec;
+        struct rte_flow_item_udp udp_mask;
+        int res;
+
+        memset(pattern, 0, sizeof(pattern));
+        memset(action, 0, sizeof(action));
+
+        /*
+        * set the rule attribute.
+        * in this case only ingress packets will be checked.
+        */
+        memset(&attr, 0, sizeof(struct rte_flow_attr));
+        attr.ingress = 1;
+
+        /*
+        * create the action sequence.
+        * one action only,  move packet to queue
+        */
+        action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
+        action[0].conf = &queue;
+        action[1].type = RTE_FLOW_ACTION_TYPE_END;
+
+        /*
+        * set the first level of the pattern (ETH).
+        */
+        pattern[0].type = RTE_FLOW_ITEM_TYPE_ETH;
+
+        /*
+        * setting the second level of the pattern (IP).
+        */
+        memset(&ip_spec, 0, sizeof(struct rte_flow_item_ipv4));
+        memset(&ip_mask, 0, sizeof(struct rte_flow_item_ipv4));
+        ip_spec.hdr.dst_addr = htonl(fl->dst_ip);
+        ip_mask.hdr.dst_addr = htonl(fl->dst_ip_mask);
+        ip_spec.hdr.src_addr = htonl(fl->src_ip);
+        ip_mask.hdr.src_addr = htonl(fl->src_ip_mask);
+        pattern[1].type = RTE_FLOW_ITEM_TYPE_IPV4;
+        pattern[1].spec = &ip_spec;
+        pattern[1].mask = &ip_mask;
+
+        /*
+        * setting the third level of the pattern (UDP).
+        */
+        memset(&udp_spec, 0, sizeof(struct rte_flow_item_udp));
+        memset(&udp_mask, 0, sizeof(struct rte_flow_item_udp));
+        udp_spec.hdr.dst_port = htons(fl->dst_port);
+        udp_mask.hdr.dst_port = htons(fl->dst_port_mask);
+        udp_spec.hdr.src_port = htons(fl->src_port);
+        udp_mask.hdr.src_port = htons(fl->src_port_mask);
+        pattern[2].type = RTE_FLOW_ITEM_TYPE_UDP;
+        pattern[2].spec = &udp_spec;
+        pattern[2].mask = &udp_mask;
+
+        /* the final level must be always type end */
+        pattern[3].type = RTE_FLOW_ITEM_TYPE_END;
+
+        res = rte_flow_validate(port_id, &attr, pattern, action, &error);
+        if (!res) {
+retry:
+            flow = rte_flow_create(port_id, &attr, pattern, action, &error);
+            if (!flow) {
+                rte_flow_flush(port_id, &error);
+                goto retry;
+            }
+
+            uint32_t src_ip_masked, dst_ip_masked;
+            uint16_t src_port_masked, dst_port_masked;
+
+            src_ip_masked = fl->src_ip & fl->src_ip_mask;
+            dst_ip_masked = fl->dst_ip & fl->dst_ip_mask;
+            src_port_masked = fl->src_port & fl->src_port_mask;
+            dst_port_masked = fl->dst_port & fl->dst_port_mask;
+            printf("Create UDP flow from " IP_STRING ":%u(%x) to " IP_STRING ":%u(%x) by queue %d on port %d\n", \
+                        HOST_IP_FMT(src_ip_masked), src_port_masked, src_port_masked, \
+                        HOST_IP_FMT(dst_ip_masked), dst_port_masked, dst_port_masked, rx_q, port_id);
+        } else {
+            printf("Invalid flow rule! msg: %s\n", error.message);
+        }
+    }
+
+	return 0;
+}
+
+int net_direct_flow_to_queue(uint16_t qid, uint16_t proto,
+                uint32_t src_ip, uint32_t src_ip_mask, uint32_t dst_ip, uint32_t dst_ip_mask, 
+                uint16_t src_port, uint16_t src_port_mask,  uint16_t dst_port, uint16_t dst_port_mask) {
+    struct flow flow = {
+        .src_ip = src_ip,
+        .src_ip_mask = src_ip_mask,
+        .dst_ip = dst_ip,
+        .dst_ip_mask = dst_ip_mask,
+        .src_port = src_port,
+        .src_port_mask = src_port_mask,
+        .dst_port = dst_port,
+        .dst_port_mask = dst_port_mask,
+    };
+    int ret = -EINVAL;
+
+    switch (proto) {
+        case SOCK_STREAM:
+            ret = net_create_tcp_flow(qid, &flow);
+            break;
+        case SOCK_DGRAM:
+            ret = net_create_udp_flow(qid, &flow);
+            break;
+        default:
+            printf("Unknown protocol %d!\n", proto);
+            break;
+    }
+
+    return ret;
 }

@@ -55,4 +55,15 @@ int net_tx(void);
 */
 uint8_t * net_get_txpkt(int pkt_len);
 
+/**
+ * net_direct_flow_to_core - Direct a given flow to a certain core
+ * 
+ * @param pkt_len: the length of packet
+ * 
+ * @return Pointer to the start of packet buffer
+*/
+int net_direct_flow_to_queue(uint16_t qid, uint16_t proto,
+                uint32_t src_ip, uint32_t src_ip_mask, uint32_t dst_ip, uint32_t dst_ip_mask, 
+                uint16_t src_port, uint16_t src_port_mask,  uint16_t dst_port, uint16_t dst_port_mask);
+
 #endif  // _NET_H_
