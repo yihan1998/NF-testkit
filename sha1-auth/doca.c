@@ -21,7 +21,7 @@ noreturn doca_error_t sdk_version_callback(void *param, void *doca_config) {
 	exit(EXIT_SUCCESS);
 }
 
-doca_error_t open_doca_device_with_pci(const char *pci_addr, tasks_check func, struct doca_dev **retval) {
+doca_error_t open_doca_device_with_pci(const char *pci_addr, jobs_check func, struct doca_dev **retval) {
 	struct doca_devinfo **dev_list;
 	uint32_t nb_devs;
 	uint8_t is_addr_equal = 0;
@@ -31,7 +31,7 @@ doca_error_t open_doca_device_with_pci(const char *pci_addr, tasks_check func, s
 	/* Set default return value */
 	*retval = NULL;
 
-	res = doca_devinfo_create_list(&dev_list, &nb_devs);
+	res = doca_devinfo_list_create(&dev_list, &nb_devs);
 	if (res != DOCA_SUCCESS) {
 		printf("Failed to load doca devices list. Doca_error value: %d\n", res);
 		return res;
@@ -39,7 +39,7 @@ doca_error_t open_doca_device_with_pci(const char *pci_addr, tasks_check func, s
 
 	/* Search */
 	for (i = 0; i < nb_devs; i++) {
-		res = doca_devinfo_is_equal_pci_addr(dev_list[i], pci_addr, &is_addr_equal);
+		res = doca_devinfo_get_is_pci_addr_equal(dev_list[i], pci_addr, &is_addr_equal);
 		if (res == DOCA_SUCCESS && is_addr_equal) {
 			/* If any special capabilities are needed */
 			if (func != NULL && func(dev_list[i]) != DOCA_SUCCESS)
@@ -48,7 +48,7 @@ doca_error_t open_doca_device_with_pci(const char *pci_addr, tasks_check func, s
 			/* if device can be opened */
 			res = doca_dev_open(dev_list[i], retval);
 			if (res == DOCA_SUCCESS) {
-				doca_devinfo_destroy_list(dev_list);
+				doca_devinfo_list_destroy(dev_list);
 				return res;
 			}
 		}
@@ -57,7 +57,7 @@ doca_error_t open_doca_device_with_pci(const char *pci_addr, tasks_check func, s
 	printf("Matching device not found\n");
 	res = DOCA_ERROR_NOT_FOUND;
 
-	doca_devinfo_destroy_list(dev_list);
+	doca_devinfo_list_destroy(dev_list);
 	return res;
 }
 

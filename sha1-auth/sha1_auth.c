@@ -40,7 +40,8 @@ int verify_pkt(uint8_t * data, int len) {
     void * mbuf_data;
 	uint8_t *resp_head;
 	struct doca_sha_ctx * sha_ctx = &ctx->sha_ctx;
-	union doca_data task_user_data = {0};
+	// char orig_sha[DOCA_SHA256_BYTE_COUNT * 2 + 1] = {0};
+	// char sha_output[DOCA_SHA256_BYTE_COUNT * 2 + 1] = {0};
 
     request = (struct sha1pkt *)data;
 
@@ -49,56 +50,38 @@ int verify_pkt(uint8_t * data, int len) {
     doca_buf_get_data(sha_ctx->src_buf, &mbuf_data);
     doca_buf_set_data(sha_ctx->src_buf, mbuf_data, request->len);
 
-    /* Include result in user data of task to be used in the callbacks */
-	task_user_data.ptr = &task_result;
-	/* Allocate and construct SHA hash task */
-	result = doca_sha_task_hash_alloc_init(sha_ctx,
-					       DOCA_SHA_ALGORITHM_SHA1,
-					       src_doca_buf,
-					       dst_doca_buf,
-					       task_user_data,
-					       &sha_hash_task);
-	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to allocate SHA hash task: %s", doca_error_get_descr(result));
-		doca_buf_dec_refcount(dst_doca_buf, NULL);
-		doca_buf_dec_refcount(src_doca_buf, NULL);
-		sha_cleanup(&resources);
-		return result;
-	}
-	/* Number of tasks submitted to progress engine */
-	resources.num_remaining_tasks = 1;
+    /* Construct sha partial job */
+	struct doca_sha_job sha_job = {
+		.base = (struct doca_job) {
+			.type = DOCA_SHA_JOB_SHA1,
+			.flags = DOCA_JOB_FLAGS_NONE,
+			.ctx = doca_sha_as_ctx(sha_ctx->doca_sha),
+        },
+		.resp_buf = sha_ctx->dst_buf,
+		.req_buf = sha_ctx->src_buf,
+		.flags = DOCA_SHA_JOB_FLAGS_SHA_PARTIAL_FINAL,
+	};
 
-	task = doca_sha_task_hash_as_task(sha_hash_task);
-	if (task == NULL) {
-		result = DOCA_ERROR_UNEXPECTED;
-		DOCA_LOG_ERR("Failed to get DOCA SHA hash task as DOCA task: %s", doca_error_get_descr(result));
-		doca_task_free(task);
-		doca_buf_dec_refcount(dst_doca_buf, NULL);
-		doca_buf_dec_refcount(src_doca_buf, NULL);
-		sha_cleanup(&resources);
-		return result;
-	}
+    // double elapsed_time;
+    // struct timespec start, end;
+    // clock_gettime(CLOCK_MONOTONIC, &start);
 
-	/* Submit SHA hash task */
-	result = doca_task_submit(task);
-	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to submit SHA hash task: %s", doca_error_get_descr(result));
-		doca_task_free(task);
-		doca_buf_dec_refcount(dst_doca_buf, NULL);
-		doca_buf_dec_refcount(src_doca_buf, NULL);
-		sha_cleanup(&resources);
-		return result;
-	}
+    res = doca_workq_submit(ctx->workq, (struct doca_job *)&sha_job);
+    if (res != DOCA_SUCCESS) {
+        printf("Unable to enqueue job. [%s]\n", doca_get_error_string(res));
+        return -1;
+    }
 
-	resources.run_pe_progress = true;
-
-	/* Wait for all tasks to be completed and for the context to be stopped */
-	while (resources.run_pe_progress) {
-		if (doca_pe_progress(state->pe) == 0)
-			nanosleep(&ts, &ts);
-	}
-
-	result = task_result;
+    do {
+		res = doca_workq_progress_retrieve(ctx->workq, &event, DOCA_WORKQ_RETRIEVE_FLAGS_NONE);
+	    if (res != DOCA_SUCCESS) {
+            if (res == DOCA_ERROR_AGAIN) {
+                continue;
+            } else {
+                printf("Unable to dequeue results. [%s]\n", doca_get_error_string(res));
+            }
+        }
+	} while (res != DOCA_SUCCESS);
 
     // clock_gettime(CLOCK_MONOTONIC, &end);
     // elapsed_time = (end.tv_sec - start.tv_sec) * 1e9;    // seconds to nanoseconds
@@ -107,13 +90,13 @@ int verify_pkt(uint8_t * data, int len) {
 
     doca_buf_get_data(sha_job.resp_buf, (void **)&resp_head);
 
-    // char original[DOCA_SHA1_BYTE_COUNT * 2 + 1] = {0};
-	// for (int i = 0; i < DOCA_SHA1_BYTE_COUNT; i++)
+    // char original[DOCA_SHA256_BYTE_COUNT * 2 + 1] = {0};
+	// for (int i = 0; i < DOCA_SHA256_BYTE_COUNT; i++)
 	// 	snprintf(original + (2 * i), 3, "%02x", request->hash[i]);
 	// printf("Sent SHA is: %s\n", original);
 
-	// char sha_output[DOCA_SHA1_BYTE_COUNT * 2 + 1] = {0};
-	// for (int i = 0; i < DOCA_SHA1_BYTE_COUNT; i++)
+	// char sha_output[DOCA_SHA256_BYTE_COUNT * 2 + 1] = {0};
+	// for (int i = 0; i < DOCA_SHA256_BYTE_COUNT; i++)
 	// 	snprintf(sha_output + (2 * i), 3, "%02x", resp_head[i]);
 	// printf("SHA256 output is: %s\n", sha_output);
 
@@ -124,8 +107,6 @@ int verify_pkt(uint8_t * data, int len) {
     doca_buf_reset_data_len(sha_ctx->dst_buf);
 
 	return 0;
-#elif defined(CONFIG_RTE_CRYPTO)
-
 #else
     struct sha1pkt * request;
     unsigned char hash[EVP_MAX_MD_SIZE];
