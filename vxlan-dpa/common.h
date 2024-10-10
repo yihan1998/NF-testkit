@@ -36,13 +36,13 @@ struct app_transfer_wq {
 /* Collateral structure for transfer host data to device */
 struct host2dev_processor_data {
 	/* RQ's CQ transfer information. */
-	struct app_transfer_cq rq_cq_transf;
+	struct app_transfer_cq rq_cq_data;
 	/* RQ transfer information. */
-	struct app_transfer_wq rq_transf;
+	struct app_transfer_wq rq_data;
 	/* SQ's CQ transfer information. */
-	struct app_transfer_cq sq_cq_transf;
+	struct app_transfer_cq sq_cq_data;
 	/* SQ transfer information. */
-	struct app_transfer_wq sq_transf;
+	struct app_transfer_wq sq_data;
     /* Thread index */
 	uint32_t thread_index;
 } __attribute__((__packed__, aligned(8)));
