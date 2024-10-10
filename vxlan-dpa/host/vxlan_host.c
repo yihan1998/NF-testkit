@@ -164,7 +164,7 @@ void dev_queues_destroy(struct app_config *app_cfg)
 	}
 }
 
-int run_device_process(struct app_config *app_cfg)
+int vxlan_run_device_process(struct app_config *app_cfg)
 {
 	int ret = 0;
 	uint64_t rpc_ret_val;
@@ -176,6 +176,363 @@ int run_device_process(struct app_config *app_cfg)
 					ctx->dev_data_daddr);
 		if (ret != FLEXIO_STATUS_SUCCESS) {
 			printf("Failed to call init function on device\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int create_flow_table(struct mlx5dv_dr_domain *domain,
+				      int level,
+				      int priority,
+				      struct mlx5dv_flow_match_parameters *match_mask,
+				      struct dr_flow_table **tbl_out)
+{
+	uint8_t criteria_enable = 0x1; /* Criteria enabled  */
+	struct dr_flow_table *tbl;
+	int result;
+
+	tbl = calloc(1, sizeof(*tbl));
+	if (tbl == NULL) {
+		printf("Failed to allocate memory for dr table\n");
+		return -1;
+	}
+
+	tbl->dr_table = mlx5dv_dr_table_create(domain, level);
+	if (tbl->dr_table == NULL) {
+		printf("Failed to create table [%d]\n", errno);
+		result = -1;
+		goto exit_with_error;
+	}
+
+	tbl->dr_matcher = mlx5dv_dr_matcher_create(tbl->dr_table, priority, criteria_enable, match_mask);
+	if (tbl->dr_matcher == NULL) {
+		printf("Failed to create matcher [%d]\n", errno);
+		result = -1;
+		goto exit_with_error;
+	}
+
+	*tbl_out = tbl;
+	return 0;
+exit_with_error:
+	if (tbl->dr_matcher)
+		mlx5dv_dr_matcher_destroy(tbl->dr_matcher);
+	if (tbl->dr_table)
+		mlx5dv_dr_table_destroy(tbl->dr_table);
+	free(tbl);
+	return result;
+}
+
+static void destroy_table(struct dr_flow_table *tbl)
+{
+	if (!tbl)
+		return;
+	if (tbl->dr_table)
+		mlx5dv_dr_table_destroy(tbl->dr_table);
+	if (tbl->dr_matcher)
+		mlx5dv_dr_matcher_destroy(tbl->dr_matcher);
+	free(tbl);
+}
+
+static void destroy_rule(struct dr_flow_rule *rule)
+{
+	if (!rule)
+		return;
+	if (rule->dr_action)
+		mlx5dv_dr_action_destroy(rule->dr_action);
+	if (rule->dr_rule)
+		mlx5dv_dr_rule_destroy(rule->dr_rule);
+	free(rule);
+}
+
+int create_rx_table(struct app_config *app_cfg)
+{
+	struct mlx5dv_flow_match_parameters *match_mask;
+	size_t flow_match_size;
+	int result;
+
+	flow_match_size = sizeof(*match_mask) + MATCH_SIZE;
+	match_mask = (struct mlx5dv_flow_match_parameters *)calloc(1, flow_match_size);
+	if (match_mask == NULL) {
+		printf("Failed to allocate match mask\n");
+		return -1;
+	}
+	match_mask->match_sz = MATCH_SIZE;
+	/* Fill match mask, match on all source mac bits */
+	DEVX_SET(dr_match_spec, match_mask->match_buf, dmac_47_16, 0xffffffff);
+	DEVX_SET(dr_match_spec, match_mask->match_buf, dmac_15_0, 0xffff);
+
+	result = create_flow_table(app_cfg->rx_domain,
+				   0, /* Table level */
+				   0, /* Matcher priority */
+				   match_mask,
+				   &app_cfg->rx_flow_table);
+
+	if (result < 0) {
+		printf("Failed to create RX flow table\n");
+		mlx5dv_dr_domain_destroy(app_cfg->rx_domain);
+		free(match_mask);
+		return result;
+	}
+
+	free(match_mask);
+	return 0;
+}
+
+int create_steering_rule_rx(struct app_config *app_cfg, struct dpa_process_context * ctx)
+{
+	struct mlx5dv_flow_match_parameters *match_mask;
+	struct mlx5dv_dr_action *actions[1];
+	const int actions_len = 1;
+	size_t flow_match_size;
+	int result;
+	char mac_str[18];  // MAC address string length is 17 characters + null terminator
+
+    mac_to_str(ctx->mac_addr, mac_str);
+
+	flow_match_size = sizeof(*match_mask) + MATCH_SIZE;
+	match_mask = (struct mlx5dv_flow_match_parameters *)calloc(1, flow_match_size);
+	if (match_mask == NULL) {
+		printf("Failed to allocate match mask\n");
+		return -1;
+	}
+	match_mask->match_sz = MATCH_SIZE;
+
+	/* Create rule */
+	ctx->rx_rule = calloc(1, sizeof(*ctx->rx_rule));
+	if (ctx->rx_rule == NULL) {
+		printf("Failed to allocate memory\n");
+		result = -1;
+		goto exit_with_error;
+	}
+
+	/* Action = forward to FlexIO RQ */
+	ctx->rx_rule->dr_action = mlx5dv_dr_action_create_dest_devx_tir(flexio_rq_get_tir(ctx->flexio_rq_ptr));
+	if (ctx->rx_rule->dr_action == NULL) {
+		printf("Failed to create RX rule action [%d]\n", errno);
+		result = -1;
+		goto exit_with_error;
+	}
+
+	actions[0] = ctx->rx_rule->dr_action;
+	printf("Match on DST MAC address: %s to queue %d\n", mac_str, flexio_cq_get_cq_num(ctx->flexio_rq_cq_ptr));
+	/* Fill rule match, match on source mac address with this value */
+	DEVX_SET(dr_match_spec, match_mask->match_buf, dmac_47_16, (ctx->mac_addr) >> 16);
+	DEVX_SET(dr_match_spec, match_mask->match_buf, dmac_15_0, (ctx->mac_addr) % (1 << 16));
+	ctx->rx_rule->dr_rule = mlx5dv_dr_rule_create(app_cfg->rx_flow_table->dr_matcher, match_mask, actions_len, actions);
+	if (ctx->rx_rule->dr_rule == NULL) {
+		printf("Failed to create RX rule [%d]\n", errno);
+		result = -1;
+		goto exit_with_error;
+	}
+	free(match_mask);
+	return 0;
+
+exit_with_error:
+	free(match_mask);
+	if (ctx->rx_rule) {
+		destroy_rule(ctx->rx_rule);
+		ctx->rx_rule = NULL;
+	}
+	destroy_table(app_cfg->rx_flow_table);
+	app_cfg->rx_flow_table = NULL;
+	mlx5dv_dr_domain_destroy(app_cfg->rx_domain);
+	return result;
+}
+
+int vxlan_create_steering_rule_rx(struct app_config *app_cfg)
+{
+	int result;
+
+	app_cfg->rx_domain = mlx5dv_dr_domain_create(app_cfg->ibv_ctx, MLX5DV_DR_DOMAIN_TYPE_NIC_RX);
+	if (app_cfg->rx_domain == NULL) {
+		printf("Failed to allocate RX domain [%d]\n", errno);
+		return -1;
+	}
+
+	create_rx_table(app_cfg);
+	
+	for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
+		struct dpa_process_context * ctx = app_cfg->context[i];
+		// printf("Create RX steering rule for thread %d", i);
+		result = create_steering_rule_rx(app_cfg, ctx);
+		if (result < 0) {
+			printf("Failed to create RX steering rule\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int create_tx_table(struct app_config *app_cfg)
+{
+	struct mlx5dv_flow_match_parameters *match_mask;
+	size_t flow_match_size;
+	int result;
+
+	flow_match_size = sizeof(*match_mask) + MATCH_SIZE;
+	match_mask = calloc(1, flow_match_size);
+	if (match_mask == NULL) {
+		printf("Failed to allocate match mask\n");
+		return -1;
+	}
+	match_mask->match_sz = MATCH_SIZE;
+	/* Fill match mask, match on all destination mac bits */
+	DEVX_SET(dr_match_spec, match_mask->match_buf, smac_47_16, 0xffffffff);
+	DEVX_SET(dr_match_spec, match_mask->match_buf, smac_15_0, 0xffff);
+
+	result = create_flow_table(app_cfg->fdb_domain,
+				   0, /* Table level */
+				   0, /* Matcher priority */
+				   match_mask,
+				   &app_cfg->tx_flow_root_table);
+	if (result < 0) {
+		printf("Failed to create TX root flow table\n");
+		mlx5dv_dr_domain_destroy(app_cfg->fdb_domain);
+		free(match_mask);
+		return result;
+	}
+
+	result = create_flow_table(app_cfg->fdb_domain,
+				   1, /* Table level */
+				   0, /* Matcher priority */
+				   match_mask,
+				   &app_cfg->tx_flow_table);
+	if (result < 0) {
+		printf("Failed to create Tx flow table\n");
+		destroy_table(app_cfg->tx_flow_root_table);
+		app_cfg->tx_flow_root_table = NULL;
+		mlx5dv_dr_domain_destroy(app_cfg->fdb_domain);
+		free(match_mask);
+		return result;
+	}
+
+	free(match_mask);
+	return 0;
+}
+
+int create_steering_rule_tx(struct app_config *app_cfg, struct dpa_process_context * ctx)
+{
+	struct mlx5dv_flow_match_parameters *match_mask;
+	struct mlx5dv_dr_action *actions[1];
+	size_t flow_match_size;
+	int result;
+
+	flow_match_size = sizeof(*match_mask) + MATCH_SIZE;
+	match_mask = calloc(1, flow_match_size);
+	if (match_mask == NULL) {
+		printf("Failed to allocate match mask");
+		return -1;
+	}
+	match_mask->match_sz = MATCH_SIZE;
+
+	/* Jump to entry table rule */
+	ctx->tx_root_rule = calloc(1, sizeof(*ctx->tx_root_rule));
+	if (ctx->tx_root_rule == NULL) {
+		printf("Failed to allocate memory");
+		result = -1;
+		goto exit_with_error;
+	}
+
+	ctx->tx_root_rule->dr_action = mlx5dv_dr_action_create_dest_table(app_cfg->tx_flow_table->dr_table);
+	if (ctx->tx_root_rule->dr_action == NULL) {
+		printf("Failed to create action jump to table");
+		result = -1;
+		goto exit_with_error;
+	}
+
+	actions[0] = ctx->tx_root_rule->dr_action;
+	/* Fill rule match, match on destination mac address with this value */
+	DEVX_SET(dr_match_spec, match_mask->match_buf, smac_47_16, (ctx->mac_addr) >> 16);
+	DEVX_SET(dr_match_spec, match_mask->match_buf, smac_15_0, (ctx->mac_addr) % (1 << 16));
+	ctx->tx_root_rule->dr_rule =
+		mlx5dv_dr_rule_create(app_cfg->tx_flow_root_table->dr_matcher, match_mask, 1, actions);
+	if (ctx->tx_root_rule->dr_rule == NULL) {
+		printf("Failed to create rule jump to table");
+		result = -1;
+		goto exit_with_error;
+	}
+
+	/* Send to wire rule */
+	ctx->tx_rule = calloc(1, sizeof(*ctx->tx_rule));
+	if (ctx->tx_rule == NULL) {
+		printf("Failed to allocate memory");
+		result = -1;
+		goto exit_with_error;
+	}
+
+	ctx->tx_rule->dr_action = mlx5dv_dr_action_create_dest_vport(app_cfg->fdb_domain, 0xFFFF);
+	if (ctx->tx_rule->dr_action == NULL) {
+		printf("Failed to create action dest vport\n");
+		result = -1;
+		goto exit_with_error;
+	}
+
+	actions[0] = ctx->tx_rule->dr_action;
+	DEVX_SET(dr_match_spec, match_mask->match_buf, smac_47_16, (ctx->mac_addr) >> 16);
+	DEVX_SET(dr_match_spec, match_mask->match_buf, smac_15_0, (ctx->mac_addr) % (1 << 16));
+	ctx->tx_rule->dr_rule = mlx5dv_dr_rule_create(app_cfg->tx_flow_table->dr_matcher, match_mask, 1, actions);
+	if (ctx->tx_rule->dr_rule == NULL) {
+		printf("Failed to create rule dest vport\n");
+		result = -1;
+		goto exit_with_error;
+	}
+
+	free(match_mask);
+	return 0;
+
+exit_with_error:
+	free(match_mask);
+	if (ctx->tx_root_rule) {
+		destroy_rule(ctx->tx_root_rule);
+		ctx->tx_root_rule = NULL;
+	}
+	if (ctx->tx_rule) {
+		destroy_rule(ctx->rx_rule);
+		ctx->tx_rule = NULL;
+	}
+	destroy_table(app_cfg->tx_flow_root_table);
+	app_cfg->tx_flow_root_table = NULL;
+	destroy_table(app_cfg->tx_flow_table);
+	app_cfg->tx_flow_table = NULL;
+	mlx5dv_dr_domain_destroy(app_cfg->fdb_domain);
+	return result;
+}
+
+int vxlan_create_steering_rule_tx(struct app_config *app_cfg)
+{
+	int result;
+
+	app_cfg->fdb_domain = mlx5dv_dr_domain_create(app_cfg->ibv_ctx, MLX5DV_DR_DOMAIN_TYPE_FDB);
+	if (app_cfg->fdb_domain == NULL) {
+		printf("Failed to allocate FDB domain\n");
+		return -1;
+	}
+
+	create_tx_table(app_cfg);
+
+	for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
+		struct dpa_process_context * ctx = app_cfg->context[i];
+		result = create_steering_rule_tx(app_cfg, ctx);
+		if (result < 0) {
+			printf("Failed to create RX steering rule\n");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int vxlan_run_event_handler(struct app_config *app_cfg) {
+	int ret = 0;
+	for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
+		struct dpa_process_context * ctx = app_cfg->context[i];
+		ret = flexio_event_handler_run(ctx->event_handler, i);
+		// ret = flexio_event_handler_run(ctx->event_handler, app_cfg->nb_dpa_threads);
+		if (ret != FLEXIO_STATUS_SUCCESS) {
+			printf("Failed to run event handler on device\n");
 			return -1;
 		}
 	}
@@ -241,14 +598,49 @@ int main(int argc, char ** argv)
 
 	/* Run init function on device */
 	printf("Run init function on device...\n");
-	result = run_device_process(&app_cfg);
-	if (result != DOCA_SUCCESS) {
+	result = vxlan_run_device_process(&app_cfg);
+	if (result < 0) {
 		printf("Failed to call init function on device\n");
 		goto device_resources_cleanup;
 	}
 
-// rule_cleanup:
-// 	steering_rules_destroy(&app_cfg);
+	/* Steering rule */
+	printf("Create steering rule for RX...\n");
+	result = vxlan_create_steering_rule_rx(&app_cfg);
+	if (result < 0) {
+		printf("Failed to create RX steering rule\n");
+		goto device_resources_cleanup;
+	}
+
+	printf("Create steering rule for TX...\n");
+	result = vxlan_create_steering_rule_tx(&app_cfg);
+	if (result < 0) {
+		printf("Failed to create TX steering rule\n");
+		goto rule_cleanup;
+	}
+
+	printf("Run VXLAN handler...\n");
+	result = vxlan_run_event_handler(&app_cfg);
+	if (result < 0) {
+		printf("Failed to run event handler on device\n");
+		goto rule_cleanup;
+	}
+
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
+	printf("Flexio reflector Started\n");
+	/* Add an additional new line for output readability */
+	printf("Press Ctrl+C to terminate\n");
+	while (!force_quit) {
+        flexio_msg_stream_flush(default_stream);
+		sleep(1);
+	}
+
+	vxlan_destroy(&app_cfg);
+	return EXIT_SUCCESS;
+
+rule_cleanup:
+	steering_rules_destroy(&app_cfg);
 device_resources_cleanup:
 	device_resources_destroy(&app_cfg);
 device_cleanup:
