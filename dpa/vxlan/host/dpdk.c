@@ -150,4 +150,5 @@ int run_dpdk_loop(void) {
             }
         }
     }
+    return 0;
 }
