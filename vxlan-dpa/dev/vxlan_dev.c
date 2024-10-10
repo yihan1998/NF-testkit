@@ -108,6 +108,9 @@ static void step_cq(struct cq_ctx_t *cq_ctx, uint32_t cq_idx_mask)
 	flexio_dev_dbr_cq_set_ci(cq_ctx->cq_dbr, cq_ctx->cq_idx);
 }
 
+flexio_dev_rpc_handler_t vxlan_device_init;	       /* Device initialization function */
+flexio_dev_event_handler_t vxlan_device_event_handler; /* Event handler function */
+
 __dpa_rpc__ uint64_t vxlan_device_init(struct host2dev_processor_data* data)
 {
 	struct device_context *dev_ctx = &dev_ctxs[data->thread_index];
@@ -242,22 +245,7 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
 	sq_data = get_next_dte(&dev_ctx->dt_ctx, DATA_IDX_MASK, LOG_WQ_DATA_ENTRY_BSIZE);
 
     uint32_t sq_data_size = vxlan_encap(sq_data, rq_data, data_sz);
-#if 0
-	/* Copy received packet to sq_data as is */
-	memcpy(sq_data, rq_data, data_sz);
 
-	/* swap mac address */
-	swap_macs(sq_data);
-
-	/* Primitive validation, that packet is our hardcoded */
-	if (data_sz == 65) {
-		/* modify UDP payload */
-		memcpy(sq_data + 0x2a, "  Event demo***************", 65 - 0x2a);
-
-		/* Set hexadecimal value by the index */
-		sq_data[0x2a] = "0123456789abcdef"[app_ctx.dt_ctx.tx_buff_idx & 0xf];
-	}
-#endif
 	/* Take first segment for SQ WQE (3 segments will be used) */
 	swqe = get_next_sqe(&dev_ctx->sq_ctx, SQ_IDX_MASK);
 
@@ -295,7 +283,7 @@ void __dpa_global__ vxlan_device_event_handler(uint64_t index)
 	 */
 	while (flexio_dev_cqe_get_owner(dev_ctx->rq_cq_ctx.cqe) != dev_ctx->rq_cq_ctx.cq_hw_owner_bit) {
 		/* Print the message */
-		flexio_dev_print("Process packet: %ld\n", app_ctx.packets_count++);
+		flexio_dev_print("Process packet: %ld\n", dev_ctx->packets_count++);
 		/* Update memory to DPA */
 		__dpa_thread_fence(__DPA_MEMORY, __DPA_R, __DPA_R);
 		/* Process the packet */
