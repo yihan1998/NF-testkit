@@ -173,9 +173,6 @@ do {\
 	addr[5] = f & 0xff;\
 } while (0)
 
-uint8_t h_source[6] = {0xde,0xed,0xbe,0xef,0xab,0xcd};
-uint8_t h_dest[6] = {0x10,0x70,0xfd,0xc8,0x94,0x75};
-
 uint16_t htons(uint16_t hostshort)
 {
     return (hostshort << 8) | (hostshort >> 8);
@@ -202,9 +199,11 @@ uint32_t vxlan_encap(char *out_data, char *in_data, uint32_t in_data_size)
     struct ethhdr *orig_eth_hdr = (struct ethhdr *)in_data;
     struct iphdr *orig_ip_hdr = (struct iphdr *)&orig_eth_hdr[1];
     struct udphdr *orig_udp_hdr = (struct udphdr *)&orig_ip_hdr[1];
+	uint8_t *src_mac = orig_eth_hdr->h_source;
+	uint8_t *dst_mac = orig_eth_hdr->h_dest;
     new_eth_hdr->h_proto=htons(0x0800);
-    SET_MAC_ADDR(new_eth_hdr->h_source,h_source[0],h_source[1],h_source[2],h_source[3],h_source[4],h_source[5]);
-    SET_MAC_ADDR(new_eth_hdr->h_dest,h_dest[0],h_dest[1],h_dest[2],h_dest[3],h_dest[4],h_dest[5]);
+    SET_MAC_ADDR(new_eth_hdr->h_source,dst_mac[0],dst_mac[1],dst_mac[2],dst_mac[3],dst_mac[4],dst_mac[5]);
+    SET_MAC_ADDR(new_eth_hdr->h_dest,src_mac[0],src_mac[1],src_mac[2],src_mac[3],src_mac[4],src_mac[5]);
     new_ip_hdr->version=4;
     new_ip_hdr->ihl=5;
     new_ip_hdr->tot_len=htons(pkt_size+sizeof(struct iphdr)+sizeof(struct udphdr)+sizeof(struct vxlanhdr));
