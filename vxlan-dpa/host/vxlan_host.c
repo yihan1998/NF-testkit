@@ -643,7 +643,7 @@ void vxlan_destroy(struct app_config *app_cfg)
 	ibv_close_device(app_cfg->ibv_ctx);
 }
 
-void device_resources_destroy(struct app_config *app_cfg)
+void vxlan_device_resources_destroy(struct app_config *app_cfg)
 {
 	dev_queues_destroy(app_cfg);
 	for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
@@ -653,7 +653,7 @@ void device_resources_destroy(struct app_config *app_cfg)
 	}
 }
 
-void device_destroy(struct app_config *app_cfg)
+void vxlan_device_destroy(struct app_config *app_cfg)
 {
 	flexio_status ret = FLEXIO_STATUS_SUCCESS;
 
@@ -745,9 +745,9 @@ int main(int argc, char ** argv)
 rule_cleanup:
 	vxlan_steering_rules_destroy(&app_cfg);
 device_resources_cleanup:
-	device_resources_destroy(&app_cfg);
+	vxlan_device_resources_destroy(&app_cfg);
 device_cleanup:
-	device_destroy(&app_cfg);
+	vxlan_device_destroy(&app_cfg);
 ibv_device_cleanup:
 	ibv_device_destroy(&app_cfg);
 	return 0;
