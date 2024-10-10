@@ -25,7 +25,6 @@ extern flexio_func_t vxlan_device_init;
 extern flexio_func_t vxlan_device_event_handler;
 
 void vxlan_steering_rules_destroy(struct app_config *app_cfg);
-void vxlan_device_destroy(struct app_config *app_cfg);
 void vxlan_ibv_device_destroy(struct app_config *app_cfg);
 void vxlan_destroy(struct app_config *app_cfg);
 void vxlan_device_resources_destroy(struct app_config *app_cfg);
@@ -608,20 +607,6 @@ void vxlan_steering_rules_destroy(struct app_config *app_cfg)
 		destroy_table(app_cfg->tx_flow_root_table);
 		app_cfg->tx_flow_root_table = NULL;
 	}
-}
-
-void vxlan_device_destroy(struct app_config *app_cfg)
-{
-	flexio_status ret = FLEXIO_STATUS_SUCCESS;
-
-	for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
-		struct dpa_process_context * ctx = app_cfg->context[i];
-		/* Destroy FlexIO process */
-		ret |= flexio_event_handler_destroy(ctx->event_handler);
-	}
-
-	if (ret != FLEXIO_STATUS_SUCCESS)
-		printf("Failed to destroy FlexIO device");
 }
 
 void vxlan_ibv_device_destroy(struct app_config *app_cfg)
