@@ -1,13 +1,45 @@
 #include <stddef.h>
+#include <stdint.h>
 #include <libflexio-libc/stdio.h>
 #include <libflexio-libc/string.h>
 #include <libflexio-dev/flexio_dev_err.h>
 #include <libflexio-dev/flexio_dev_queue_access.h>
 #include <libflexio-libc/string.h>
-#include <stdint.h>
 #include <dpaintrin.h>
 
 #include "../common.h"
+
+/* CQ Context */
+struct cq_ctx_t {
+	uint32_t cq_number;		  /* CQ number */
+	struct flexio_dev_cqe64 *cq_ring; /* CQEs buffer */
+	struct flexio_dev_cqe64 *cqe;	  /* Current CQE */
+	uint32_t cq_idx;		  /* Current CQE IDX */
+	uint8_t cq_hw_owner_bit;	  /* HW/SW ownership */
+	uint32_t *cq_dbr;		  /* CQ doorbell record */
+};
+
+/* RQ Context */
+struct rq_ctx_t {
+	uint32_t rq_number;			     /* RQ number */
+	struct flexio_dev_wqe_rcv_data_seg *rq_ring; /* WQEs buffer */
+	uint32_t *rq_dbr;			     /* RQ doorbell record */
+};
+
+/* SQ Context */
+struct sq_ctx_t {
+	uint32_t sq_number;		   /* SQ number */
+	uint32_t sq_wqe_seg_idx;	   /* WQE segment index */
+	union flexio_dev_sqe_seg *sq_ring; /* SQEs buffer */
+	uint32_t *sq_dbr;		   /* SQ doorbell record */
+	uint32_t sq_pi;			   /* SQ producer index */
+};
+
+/* SQ data buffer */
+struct dt_ctx_t {
+	void *sq_tx_buff;     /* SQ TX buffer */
+	uint32_t tx_buff_idx; /* TX buffer index */
+};
 
 /* The structure of the sample DPA application contains global data that the application uses */
 static struct device_context {
@@ -21,7 +53,7 @@ static struct device_context {
 	sq_ctx_t sq_ctx;        /* SQ */
 	cq_ctx_t sq_cq_ctx;     /* SQ CQ */
 	dt_ctx_t dt_ctx;        /* SQ Data ring */
-} __attribute__((__aligned__(64))) dev_ctxs[MAX_THREADS];
+} __attribute__((__aligned__(64))) dev_ctxs[MAX_NB_THREAD];
 
 // /* Initialize the app_ctx structure from the host data.
 //  *  data_from_host - pointer host2dev_packet_processor_data from host.
