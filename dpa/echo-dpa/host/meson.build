@@ -41,6 +41,6 @@ executable('echo',
 	c_args: '-DDEV_APP_NAME='+dev_app_name,
 	native: true,
         include_directories: inc,
-	dependencies: [flexio_dep, ibverbs_dep, mlx5_dep, doca_common_dep, sample_device_dep],
+	dependencies: [flexio_dep, ibverbs_dep, mlx5_dep, dpdk_dep, doca_common_dep, sample_device_dep],
 	link_depends: sample_dev_target
 )
