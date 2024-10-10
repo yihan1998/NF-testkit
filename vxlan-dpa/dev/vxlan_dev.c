@@ -83,7 +83,7 @@ static void init_sq(const struct app_transfer_wq app_sq, struct sq_ctx_t *ctx)
 	ctx->sq_dbr++;
 }
 
-__dpa_rpc__ uint64_t device_context_init(struct host2dev_processor_data* data)
+__dpa_rpc__ uint64_t vxlan_device_init(struct host2dev_processor_data* data)
 {
 	struct device_context *dev_ctx = &dev_ctxs[data->thread_index];
 	dev_ctx->lkey = data->sq_data.wqd_mkey_id;
@@ -92,7 +92,7 @@ __dpa_rpc__ uint64_t device_context_init(struct host2dev_processor_data* data)
 	init_cq(data->sq_cq_data, &dev_ctx->sq_cq_ctx);
 	init_sq(data->sq_data, &dev_ctx->sq_ctx);
 
-	dev_ctx->dt_ctx.sq_tx_buff = (void *)shared_data->sq_data.wqd_daddr;
+	dev_ctx->dt_ctx.sq_tx_buff = (void *)data->sq_data.wqd_daddr;
 	dev_ctx->dt_ctx.tx_buff_idx = 0;
 
 	dev_ctx->is_initalized = 1;
@@ -143,7 +143,18 @@ do {\
 
 uint8_t h_source[6] = {0xde,0xed,0xbe,0xef,0xab,0xcd};
 uint8_t h_dest[6] = {0x10,0x70,0xfd,0xc8,0x94,0x75};
-        
+
+uint16_t htons(uint16_t hostshort) {
+    return (hostshort << 8) | (hostshort >> 8);
+}
+
+uint32_t htonl(uint32_t hostlong) {
+    return ((hostlong << 24) & 0xFF000000) |
+           ((hostlong << 8) & 0x00FF0000) |
+           ((hostlong >> 8) & 0x0000FF00) |
+           ((hostlong >> 24) & 0x000000FF);
+}
+
 /* Return size of packet */
 uint32_t vxlan_encap(char *out_data, char *in_data, uint32_t in_data_size) {
     uint32_t pkt_size=in_data_size;
@@ -162,7 +173,7 @@ uint32_t vxlan_encap(char *out_data, char *in_data, uint32_t in_data_size) {
     new_ip_hdr->version=4;
     new_ip_hdr->ihl=5;
     new_ip_hdr->tot_len=htons(pkt_size+sizeof(struct iphdr)+sizeof(struct udphdr)+sizeof(struct vxlanhdr));
-    new_ip_hdr->protocol=IPPROTO_UDP;
+    new_ip_hdr->protocol=0x11;
     new_ip_hdr->saddr=orig_ip_hdr->saddr;
     new_ip_hdr->daddr=orig_ip_hdr->daddr;
     new_udp_hdr->source=orig_udp_hdr->source;
@@ -175,7 +186,7 @@ uint32_t vxlan_encap(char *out_data, char *in_data, uint32_t in_data_size) {
 /* process packet - read it, swap MAC addresses, modify it, create a send WQE and send it back
  *  dtctx - pointer to context of the thread.
  */
-static void process_packet(struct flexio_dev_thread_ctx *dtctx)
+static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_context *dev_ctx)
 {
 	/* RX packet handling variables */
 	struct flexio_dev_wqe_rcv_data_seg *rwqe;
@@ -193,17 +204,17 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx)
 	uint32_t data_sz;
 
 	/* Extract relevant data from the CQE */
-	rq_wqe_idx = flexio_dev_cqe_get_wqe_counter(app_ctx.rq_cq_ctx.cqe);
-	data_sz = flexio_dev_cqe_get_byte_cnt(app_ctx.rq_cq_ctx.cqe);
+	rq_wqe_idx = flexio_dev_cqe_get_wqe_counter(dev_ctx->rq_cq_ctx.cqe);
+	data_sz = flexio_dev_cqe_get_byte_cnt(dev_ctx->rq_cq_ctx.cqe);
 
 	/* Get the RQ WQE pointed to by the CQE */
-	rwqe = &app_ctx.rq_ctx.rq_ring[rq_wqe_idx & RQ_IDX_MASK];
+	rwqe = &dev_ctx->rq_ctx.rq_ring[rq_wqe_idx & RQ_IDX_MASK];
 
 	/* Extract data (whole packet) pointed to by the RQ WQE */
 	rq_data = flexio_dev_rwqe_get_addr(rwqe);
 
 	/* Take the next entry from the data ring */
-	sq_data = get_next_dte(&app_ctx.dt_ctx, DATA_IDX_MASK, LOG_WQD_CHUNK_BSIZE);
+	sq_data = get_next_dte(&dev_ctx->dt_ctx, DATA_IDX_MASK, LOG_WQD_CHUNK_BSIZE);
 
     uint32_t sq_data_size = vxlan_encap(sq_data, rq_data, data_sz);
 #if 0
@@ -223,28 +234,28 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx)
 	}
 #endif
 	/* Take first segment for SQ WQE (3 segments will be used) */
-	swqe = get_next_sqe(&app_ctx.sq_ctx, SQ_IDX_MASK);
+	swqe = get_next_sqe(&dev_ctx->sq_ctx, SQ_IDX_MASK);
 
 	/* Fill out 1-st segment (Control) */
-	flexio_dev_swqe_seg_ctrl_set(swqe, app_ctx.sq_ctx.sq_pi, app_ctx.sq_ctx.sq_number,
+	flexio_dev_swqe_seg_ctrl_set(swqe, dev_ctx->sq_ctx.sq_pi, dev_ctx->sq_ctx.sq_number,
 				     MLX5_CTRL_SEG_CE_CQE_ON_CQE_ERROR, FLEXIO_CTRL_SEG_SEND_EN);
 
 	/* Fill out 2-nd segment (Ethernet) */
-	swqe = get_next_sqe(&app_ctx.sq_ctx, SQ_IDX_MASK);
+	swqe = get_next_sqe(&dev_ctx->sq_ctx, SQ_IDX_MASK);
 	flexio_dev_swqe_seg_eth_set(swqe, 0, 0, 0, NULL);
 
 	/* Fill out 3-rd segment (Data) */
-	swqe = get_next_sqe(&app_ctx.sq_ctx, SQ_IDX_MASK);
-	flexio_dev_swqe_seg_mem_ptr_data_set(swqe, sq_data_size, app_ctx.lkey, (uint64_t)sq_data);
+	swqe = get_next_sqe(&dev_ctx->sq_ctx, SQ_IDX_MASK);
+	flexio_dev_swqe_seg_mem_ptr_data_set(swqe, sq_data_size, dev_ctx->lkey, (uint64_t)sq_data);
 
 	/* Send WQE is 4 WQEBBs need to skip the 4-th segment */
-	swqe = get_next_sqe(&app_ctx.sq_ctx, SQ_IDX_MASK);
+	swqe = get_next_sqe(&dev_ctx->sq_ctx, SQ_IDX_MASK);
 
 	/* Ring DB */
 	__dpa_thread_fence(__DPA_MEMORY, __DPA_W, __DPA_W);
-	flexio_dev_qp_sq_ring_db(dtctx, ++app_ctx.sq_ctx.sq_pi, app_ctx.sq_ctx.sq_number);
+	flexio_dev_qp_sq_ring_db(dtctx, ++dev_ctx->sq_ctx.sq_pi, dev_ctx->sq_ctx.sq_number);
 	__dpa_thread_fence(__DPA_MEMORY, __DPA_W, __DPA_W);
-	flexio_dev_dbr_rq_inc_pi(app_ctx.rq_ctx.rq_dbr);
+	flexio_dev_dbr_rq_inc_pi(dev_ctx->rq_ctx.rq_dbr);
 }
 
 void __dpa_global__ vxlan_device_event_handler(uint64_t index)
