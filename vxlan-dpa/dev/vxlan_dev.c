@@ -83,6 +83,31 @@ static void init_sq(const struct app_transfer_wq app_sq, struct sq_ctx_t *ctx)
 	ctx->sq_dbr++;
 }
 
+static void *get_next_dte(struct dt_ctx_t *dt_ctx, uint32_t dt_idx_mask, uint32_t log_dt_entry_sz)
+{
+	uint32_t mask = ((dt_ctx->tx_buff_idx++ & dt_idx_mask) << log_dt_entry_sz);
+	char *buff_p = (char *)dt_ctx->sq_tx_buff;
+
+	return buff_p + mask;
+}
+
+static void *get_next_sqe(struct sq_ctx_t *sq_ctx, uint32_t sq_idx_mask)
+{
+	return &sq_ctx->sq_ring[sq_ctx->sq_wqe_seg_idx++ & sq_idx_mask];
+}
+
+static void step_cq(struct cq_ctx_t *cq_ctx, uint32_t cq_idx_mask)
+{
+	cq_ctx->cq_idx++;
+	cq_ctx->cqe = &cq_ctx->cq_ring[cq_ctx->cq_idx & cq_idx_mask];
+	/* check for wrap around */
+	if (!(cq_ctx->cq_idx & cq_idx_mask))
+		cq_ctx->cq_hw_owner_bit = !cq_ctx->cq_hw_owner_bit;
+
+	__dpa_thread_fence(__DPA_MEMORY, __DPA_W, __DPA_W);
+	flexio_dev_dbr_cq_set_ci(cq_ctx->cq_dbr, cq_ctx->cq_idx);
+}
+
 __dpa_rpc__ uint64_t vxlan_device_init(struct host2dev_processor_data* data)
 {
 	struct device_context *dev_ctx = &dev_ctxs[data->thread_index];
