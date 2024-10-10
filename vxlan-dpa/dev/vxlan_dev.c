@@ -48,57 +48,48 @@ static struct device_context {
 
 	uint32_t lkey;				/* Local memory key */
 	uint32_t is_initalized;		/* Initialization flag */
-	cq_ctx_t rq_cq_ctx;     /* RQ CQ */
-	rq_ctx_t rq_ctx;        /* RQ */
-	sq_ctx_t sq_ctx;        /* SQ */
-	cq_ctx_t sq_cq_ctx;     /* SQ CQ */
-	dt_ctx_t dt_ctx;        /* SQ Data ring */
+	struct cq_ctx_t rq_cq_ctx;	/* RQ CQ */
+	struct rq_ctx_t rq_ctx;		/* RQ */
+	struct sq_ctx_t sq_ctx;		/* SQ */
+	struct cq_ctx_t sq_cq_ctx;	/* SQ CQ */
+	struct dt_ctx_t dt_ctx;		/* SQ Data ring */
 } __attribute__((__aligned__(64))) dev_ctxs[MAX_NB_THREAD];
 
-// /* Initialize the app_ctx structure from the host data.
-//  *  data_from_host - pointer host2dev_packet_processor_data from host.
-//  */
-// static void app_ctx_init(struct host2dev_packet_processor_data *data_from_host)
-// {
-// 	app_ctx.packets_count = 0;
-// 	app_ctx.lkey = data_from_host->sq_transf.wqd_mkey_id;
+static void init_cq(const struct app_transfer_cq app_cq, struct cq_ctx_t *ctx)
+{
+	ctx->cq_number = app_cq.cq_num;
+	ctx->cq_ring = (struct flexio_dev_cqe64 *)app_cq.cq_ring_daddr;
+	ctx->cq_dbr = (uint32_t *)app_cq.cq_dbr_daddr;
 
-// 	/* Set context for RQ's CQ */
-// 	com_cq_ctx_init(&app_ctx.rq_cq_ctx,
-// 			data_from_host->rq_cq_transf.cq_num,
-// 			data_from_host->rq_cq_transf.log_cq_depth,
-// 			data_from_host->rq_cq_transf.cq_ring_daddr,
-// 			data_from_host->rq_cq_transf.cq_dbr_daddr);
+	ctx->cqe = ctx->cq_ring; /* Points to the first CQE */
+	ctx->cq_idx = 0;
+	ctx->cq_hw_owner_bit = 0x1;
+}
 
-// 	/* Set context for RQ */
-// 	com_rq_ctx_init(&app_ctx.rq_ctx,
-// 			data_from_host->rq_transf.wq_num,
-// 			data_from_host->rq_transf.wq_ring_daddr,
-// 			data_from_host->rq_transf.wq_dbr_daddr);
+static void init_rq(const struct app_transfer_wq app_rq, struct rq_ctx_t *ctx)
+{
+	ctx->rq_number = app_rq.wq_num;
+	ctx->rq_ring = (struct flexio_dev_wqe_rcv_data_seg *)app_rq.wq_ring_daddr;
+	ctx->rq_dbr = (uint32_t *)app_rq.wq_dbr_daddr;
+}
 
-// 	/* Set context for SQ */
-// 	com_sq_ctx_init(&app_ctx.sq_ctx,
-// 			data_from_host->sq_transf.wq_num,
-// 			data_from_host->sq_transf.wq_ring_daddr);
+static void init_sq(const struct app_transfer_wq app_sq, struct sq_ctx_t *ctx)
+{
+	ctx->sq_number = app_sq.wq_num;
+	ctx->sq_ring = (union flexio_dev_sqe_seg *)app_sq.wq_ring_daddr;
+	ctx->sq_dbr = (uint32_t *)app_sq.wq_dbr_daddr;
 
-// 	/* Set context for SQ's CQ */
-// 	com_cq_ctx_init(&app_ctx.sq_cq_ctx,
-// 			data_from_host->sq_cq_transf.cq_num,
-// 			data_from_host->sq_cq_transf.log_cq_depth,
-// 			data_from_host->sq_cq_transf.cq_ring_daddr,
-// 			data_from_host->sq_cq_transf.cq_dbr_daddr);
-
-// 	/* Set context for data */
-// 	com_dt_ctx_init(&app_ctx.dt_ctx, data_from_host->sq_transf.wqd_daddr);
-// }
+	ctx->sq_wqe_seg_idx = 0;
+	ctx->sq_dbr++;
+}
 
 __dpa_rpc__ uint64_t device_context_init(struct host2dev_processor_data* data)
 {
 	struct device_context *dev_ctx = &dev_ctxs[data->thread_index];
 	dev_ctx->lkey = data->sq_data.wqd_mkey_id;
-	init_cq(data->rq_cq_data, &dev_ctx->rqcq_ctx);
+	init_cq(data->rq_cq_data, &dev_ctx->rq_cq_ctx);
 	init_rq(data->rq_data, &dev_ctx->rq_ctx);
-	init_cq(data->sq_cq_data, &dev_ctx->sqcq_ctx);
+	init_cq(data->sq_cq_data, &dev_ctx->sq_cq_ctx);
 	init_sq(data->sq_data, &dev_ctx->sq_ctx);
 
 	dev_ctx->dt_ctx.sq_tx_buff = (void *)shared_data->sq_data.wqd_daddr;
