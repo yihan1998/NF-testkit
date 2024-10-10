@@ -108,8 +108,11 @@ static void step_cq(struct cq_ctx_t *cq_ctx, uint32_t cq_idx_mask)
 	flexio_dev_dbr_cq_set_ci(cq_ctx->cq_dbr, cq_ctx->cq_idx);
 }
 
-flexio_dev_rpc_handler_t vxlan_device_init;	       /* Device initialization function */
 flexio_dev_event_handler_t vxlan_device_event_handler; /* Event handler function */
+
+uint16_t htons(uint16_t hostshort);
+uint32_t htonl(uint32_t hostlong);
+uint32_t vxlan_encap(char *out_data, char *in_data, uint32_t in_data_size);
 
 __dpa_rpc__ uint64_t vxlan_device_init(struct host2dev_processor_data* data)
 {
@@ -172,11 +175,13 @@ do {\
 uint8_t h_source[6] = {0xde,0xed,0xbe,0xef,0xab,0xcd};
 uint8_t h_dest[6] = {0x10,0x70,0xfd,0xc8,0x94,0x75};
 
-uint16_t htons(uint16_t hostshort) {
+uint16_t htons(uint16_t hostshort)
+{
     return (hostshort << 8) | (hostshort >> 8);
 }
 
-uint32_t htonl(uint32_t hostlong) {
+uint32_t htonl(uint32_t hostlong)
+{
     return ((hostlong << 24) & 0xFF000000) |
            ((hostlong << 8) & 0x00FF0000) |
            ((hostlong >> 8) & 0x0000FF00) |
@@ -184,7 +189,8 @@ uint32_t htonl(uint32_t hostlong) {
 }
 
 /* Return size of packet */
-uint32_t vxlan_encap(char *out_data, char *in_data, uint32_t in_data_size) {
+uint32_t vxlan_encap(char *out_data, char *in_data, uint32_t in_data_size)
+{
     uint32_t pkt_size=in_data_size;
     uint32_t new_hdr_size=sizeof(struct ethhdr)+sizeof(struct iphdr)+sizeof(struct udphdr)+sizeof(struct vxlanhdr);
     memcpy(out_data+new_hdr_size,in_data,in_data_size);
