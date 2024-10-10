@@ -44,6 +44,8 @@
 		b = tmp;            \
 	} while (0)
 
+void swap_macs(char *packet);
+
 /* Swap source and destination MAC addresses in the packet.
  *  packet - pointer to the packet.
  */
