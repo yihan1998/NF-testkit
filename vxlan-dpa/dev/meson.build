@@ -1,7 +1,7 @@
 sample_dev_srcs =  ['vxlan_dev.c']
 app_out_name = dev_app_name + '.a'
 
-build_dpacc = find_program('doca_build_dpacc.sh', required: true)
+build_dpacc = find_program('/opt/mellanox/flexio/samples/doca_build_dpacc.sh', required: true)
 
 sample_dev_target = custom_target('apps_' + dev_app_name,
 				  command: [build_dpacc, '--application',
