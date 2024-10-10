@@ -1,7 +1,7 @@
 #ifndef _VXLAN_COMMON_H_
 #define _VXLAN_COMMON_H_
 
-#include <libflexio/flexio.h>
+//#include <libflexio/flexio.h>
 
 #define MAX_NB_THREAD	256
 

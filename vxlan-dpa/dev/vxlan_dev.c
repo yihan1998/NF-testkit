@@ -1,19 +1,11 @@
 #include <libflexio-dev/flexio_dev_err.h>
 #include <libflexio-dev/flexio_dev_queue_access.h>
 #include <libflexio-libc/string.h>
+#include <stdint.h>
 #include <stddef.h>
 #include <dpaintrin.h>
 
 #include "../common.h"
-
-/* Mask for CQ index */
-#define CQ_IDX_MASK ((1 << LOG_CQ_DEPTH) - 1)
-/* Mask for RQ index */
-#define RQ_IDX_MASK ((1 << LOG_RQ_DEPTH) - 1)
-/* Mask for SQ index */
-#define SQ_IDX_MASK ((1 << (LOG_SQ_DEPTH + LOG_SQE_NUM_SEGS)) - 1)
-/* Mask for data index */
-#define DATA_IDX_MASK ((1 << (LOG_SQ_DEPTH)) - 1)
 
 /* The structure of the sample DPA application contains global data that the application uses */
 static struct device_context {

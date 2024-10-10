@@ -1,3 +1,5 @@
+#include <libflexio/flexio.h>
+#include <libflexio/flexio_ver.h>
 #include <infiniband/mlx5_api.h>
 
 #include <assert.h>
