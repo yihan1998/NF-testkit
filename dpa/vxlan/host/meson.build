@@ -30,6 +30,7 @@
 srcs = [
     'vxlan_host.c',
 	'queue.c',
+	'dpdk.c',
 ]
 
 inc = include_directories('..')
