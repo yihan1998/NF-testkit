@@ -743,7 +743,7 @@ int main(int argc, char ** argv)
 	return EXIT_SUCCESS;
 
 rule_cleanup:
-	steering_rules_destroy(&app_cfg);
+	vxlan_steering_rules_destroy(&app_cfg);
 device_resources_cleanup:
 	device_resources_destroy(&app_cfg);
 device_cleanup:
