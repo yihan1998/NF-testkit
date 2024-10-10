@@ -127,6 +127,7 @@ __dpa_rpc__ uint64_t vxlan_device_init(struct host2dev_processor_data* data)
 	dev_ctx->dt_ctx.tx_buff_idx = 0;
 
 	dev_ctx->is_initalized = 1;
+	return 0;
 }
 
 struct ethhdr {
