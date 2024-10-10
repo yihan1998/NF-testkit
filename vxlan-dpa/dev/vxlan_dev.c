@@ -108,6 +108,7 @@ static void step_cq(struct cq_ctx_t *cq_ctx, uint32_t cq_idx_mask)
 	flexio_dev_dbr_cq_set_ci(cq_ctx->cq_dbr, cq_ctx->cq_idx);
 }
 
+uint64_t vxlan_device_init(uint64_t data);
 flexio_dev_event_handler_t vxlan_device_event_handler; /* Event handler function */
 
 uint16_t htons(uint16_t hostshort);
