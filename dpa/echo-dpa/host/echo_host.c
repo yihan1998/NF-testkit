@@ -13,6 +13,7 @@
 #include <doca_log.h>
 
 #include "queue.h"
+#include "dpdk.h"
 
 #define MATCH_SIZE 64		  /* DR Matcher size */
 #define PRINTF_BUFF_BSIZE (4 * 2048)
