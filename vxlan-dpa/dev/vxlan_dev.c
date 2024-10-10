@@ -214,7 +214,7 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
 	rq_data = flexio_dev_rwqe_get_addr(rwqe);
 
 	/* Take the next entry from the data ring */
-	sq_data = get_next_dte(&dev_ctx->dt_ctx, DATA_IDX_MASK, LOG_WQD_CHUNK_BSIZE);
+	sq_data = get_next_dte(&dev_ctx->dt_ctx, DATA_IDX_MASK, LOG_WQ_DATA_ENTRY_BSIZE);
 
     uint32_t sq_data_size = vxlan_encap(sq_data, rq_data, data_sz);
 #if 0
@@ -268,21 +268,20 @@ void __dpa_global__ vxlan_device_event_handler(uint64_t index)
 
 	/* Poll CQ until the package is received.
 	 */
-	while (flexio_dev_cqe_get_owner(app_ctx.rq_cq_ctx.cqe) !=
-	       app_ctx.rq_cq_ctx.cq_hw_owner_bit) {
+	while (flexio_dev_cqe_get_owner(dev_ctx->rq_cq_ctx.cqe) != dev_ctx->rq_cq_ctx.cq_hw_owner_bit) {
 		/* Print the message */
 		flexio_dev_print("Process packet: %ld\n", app_ctx.packets_count++);
 		/* Update memory to DPA */
 		__dpa_thread_fence(__DPA_MEMORY, __DPA_R, __DPA_R);
 		/* Process the packet */
-		process_packet(dtctx);
+		process_packet(dtctx, dev_ctx);
 		/* Update RQ CQ */
-		com_step_cq(&app_ctx.rq_cq_ctx);
+		step_cq(&dev_ctx->rq_cq_ctx, CQ_IDX_MASK);
 	}
 	/* Update the memory to the chip */
 	__dpa_thread_fence(__DPA_MEMORY, __DPA_W, __DPA_W);
 	/* Arming cq for next packet */
-	flexio_dev_cq_arm(dtctx, app_ctx.rq_cq_ctx.cq_idx, app_ctx.rq_cq_ctx.cq_number);
+	flexio_dev_cq_arm(dtctx, dev_ctx->rq_cq_ctx.cq_idx, dev_ctx->rq_cq_ctx.cq_number);
 
 	/* Reschedule the thread */
 	flexio_dev_thread_reschedule();
