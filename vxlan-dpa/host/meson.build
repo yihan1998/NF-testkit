@@ -37,6 +37,6 @@ executable('vxlan',
 	srcs,
 	c_args: '-DDEV_APP_NAME='+dev_app_name,
 	native: true,
-	dependencies: [flexio_dep, ibverbs_dep, mlx5_dep, doca_dep],
+	dependencies: [flexio_dep, ibverbs_dep, mlx5_dep, doca_common_dep],
 	link_depends: sample_dev_target
 )
