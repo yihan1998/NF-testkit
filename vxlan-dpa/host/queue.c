@@ -11,6 +11,71 @@
 
 #define LOG2VALUE(l) (1UL << (l)) /* 2^l */
 
+static int init_dpa_rq_ring(struct flexio_process *process,
+				     flexio_uintptr_t ring_daddr,
+				     int log_depth,
+				     flexio_uintptr_t data_daddr,
+				     int log_chunk_bsize,
+				     uint32_t wqd_mkey_id)
+{
+	struct mlx5_wqe_data_seg *rx_wqes, *dseg;
+	size_t data_chunk_bsize;
+	size_t ring_bsize;
+	int num_of_wqes;
+	int result = 0;
+	int i;
+
+	num_of_wqes = LOG2VALUE(log_depth);
+	ring_bsize = num_of_wqes * sizeof(struct mlx5_wqe_data_seg);
+	data_chunk_bsize = LOG2VALUE(log_chunk_bsize);
+
+	rx_wqes = calloc(num_of_wqes, sizeof(struct mlx5_wqe_data_seg));
+
+	if (rx_wqes == NULL) {
+		printf("Failed to allocate memory for RQ WQEs\n");
+		return -1;
+	}
+
+	/* Initialize WQEs' data segment */
+	dseg = rx_wqes;
+
+	for (i = 0; i < num_of_wqes; i++) {
+		mlx5dv_set_data_seg(dseg, data_chunk_bsize, wqd_mkey_id, data_daddr);
+		dseg++;
+		data_daddr += data_chunk_bsize;
+	}
+
+	/* Copy RX WQEs from host to FlexIO RQ ring */
+	if (flexio_host2dev_memcpy(process, rx_wqes, ring_bsize, ring_daddr) != FLEXIO_STATUS_SUCCESS) {
+		printf("Failed to copy RX WQEs from host to FlexIO RQ ring\n");
+		return -1;
+	}
+
+	free(rx_wqes);
+	return result;
+}
+
+static int create_dpa_mkey(struct flexio_process *process,
+				    struct ibv_pd *pd,
+				    flexio_uintptr_t daddr,
+				    int log_bsize,
+				    int access,
+				    struct flexio_mkey **mkey)
+{
+	struct flexio_mkey_attr mkey_attr = {0};
+
+	mkey_attr.pd = pd;
+	mkey_attr.daddr = daddr;
+	mkey_attr.len = LOG2VALUE(log_bsize);
+	mkey_attr.access = access;
+	if (flexio_device_mkey_create(process, &mkey_attr, mkey) != FLEXIO_STATUS_SUCCESS) {
+		printf("Failed to create MKey\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int allocate_dbr(struct flexio_process *process, flexio_uintptr_t *dbr_daddr)
 {
 	__be32 dbr[2] = {0, 0};
@@ -19,35 +84,6 @@ static int allocate_dbr(struct flexio_process *process, flexio_uintptr_t *dbr_da
 		printf("Failed to copy DBR to device memory\n");
 		return -1;
 	}
-	return 0;
-}
-
-
-static int allocate_sq_memory(struct flexio_process *process,
-				       int log_depth,
-				       int log_data_bsize,
-				       struct app_transfer_wq *sq_transf)
-{
-	const int log_wqe_bsize = 6; /* WQE size is 64 bytes */
-	int result;
-
-	if (flexio_buf_dev_alloc(process, LOG2VALUE(log_data_bsize), &sq_transf->wqd_daddr) != FLEXIO_STATUS_SUCCESS) {
-		printf("Failed to allocate SQ data buffer\n");
-		return -1;
-	}
-
-	if (flexio_buf_dev_alloc(process, LOG2VALUE(log_depth + log_wqe_bsize), &sq_transf->wq_ring_daddr) !=
-	    FLEXIO_STATUS_SUCCESS) {
-		printf("Failed to allocate SQ ring\n");
-		return -1;
-	}
-
-	result = allocate_dbr(process, &sq_transf->wq_dbr_daddr);
-	if (result != DOCA_SUCCESS) {
-		pritnf("Failed to allocate SQ DB record\n");
-		return result;
-	}
-
 	return 0;
 }
 
@@ -87,6 +123,34 @@ static int allocate_cq_memory(struct flexio_process *process, int log_depth, str
 	if (ret) {
 		printf("Failed to allocate CQ ring\n");
 		return -1;
+	}
+
+	return 0;
+}
+
+static int allocate_sq_memory(struct flexio_process *process,
+				       int log_depth,
+				       int log_data_bsize,
+				       struct app_transfer_wq *sq_transf)
+{
+	const int log_wqe_bsize = 6; /* WQE size is 64 bytes */
+	int result;
+
+	if (flexio_buf_dev_alloc(process, LOG2VALUE(log_data_bsize), &sq_transf->wqd_daddr) != FLEXIO_STATUS_SUCCESS) {
+		printf("Failed to allocate SQ data buffer\n");
+		return -1;
+	}
+
+	if (flexio_buf_dev_alloc(process, LOG2VALUE(log_depth + log_wqe_bsize), &sq_transf->wq_ring_daddr) !=
+	    FLEXIO_STATUS_SUCCESS) {
+		printf("Failed to allocate SQ ring\n");
+		return -1;
+	}
+
+	result = allocate_dbr(process, &sq_transf->wq_dbr_daddr);
+	if (result < 0) {
+		printf("Failed to allocate SQ DB record\n");
+		return result;
 	}
 
 	return 0;
@@ -201,34 +265,6 @@ int allocate_rq(struct app_config *app_cfg, struct dpa_process_context * ctx)
 	return 0;
 }
 
-static int allocate_sq_memory(struct flexio_process *process,
-				       int log_depth,
-				       int log_data_bsize,
-				       struct app_transfer_wq *sq_transf)
-{
-	const int log_wqe_bsize = 6; /* WQE size is 64 bytes */
-	int result;
-
-	if (flexio_buf_dev_alloc(process, LOG2VALUE(log_data_bsize), &sq_transf->wqd_daddr) != FLEXIO_STATUS_SUCCESS) {
-		printf("Failed to allocate SQ data buffer\n");
-		return -1;
-	}
-
-	if (flexio_buf_dev_alloc(process, LOG2VALUE(log_depth + log_wqe_bsize), &sq_transf->wq_ring_daddr) !=
-	    FLEXIO_STATUS_SUCCESS) {
-		printf("Failed to allocate SQ ring\n");
-		return -1;
-	}
-
-	result = allocate_dbr(process, &sq_transf->wq_dbr_daddr);
-	if (result < 0) {
-		printf("Failed to allocate SQ DB record\n");
-		return result;
-	}
-
-	return 0;
-}
-
 int allocate_sq(struct app_config *app_cfg, struct dpa_process_context * ctx)
 {
 	int result;
@@ -296,7 +332,7 @@ int allocate_sq(struct app_config *app_cfg, struct dpa_process_context * ctx)
 	return 0;
 }
 
-void rq_destroy(struct app_cfg *app_cfg, struct dpa_process_context * ctx)
+void rq_destroy(struct app_config *app_cfg, struct dpa_process_context * ctx)
 {
 	flexio_status ret = FLEXIO_STATUS_SUCCESS;
 
@@ -310,7 +346,7 @@ void rq_destroy(struct app_cfg *app_cfg, struct dpa_process_context * ctx)
 		printf("Failed to destroy RQ\n");
 }
 
-void sq_destroy(struct app_cfg *app_cfg, struct dpa_process_context * ctx)
+void sq_destroy(struct app_config *app_cfg, struct dpa_process_context * ctx)
 {
 	flexio_status ret = FLEXIO_STATUS_SUCCESS;
 

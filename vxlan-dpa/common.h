@@ -1,6 +1,10 @@
 #ifndef _VXLAN_COMMON_H_
 #define _VXLAN_COMMON_H_
 
+#include <libflexio/flexio.h>
+
+#define MAX_NB_THREAD	256
+
 /* Logarithm ring size */
 #define LOG_SQ_RING_DEPTH 7 /* 2^7 entries */
 #define LOG_RQ_RING_DEPTH 7 /* 2^7 entries */

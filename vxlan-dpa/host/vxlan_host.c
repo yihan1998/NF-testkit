@@ -15,6 +15,7 @@
 
 /* This should be generated */
 extern flexio_func_t vxlan_device_init;
+extern flexio_func_t vxlan_device_event_handler;
 
 static struct ibv_context *open_ibv_device(const char *device_name)
 {
@@ -72,7 +73,7 @@ int setup_device(struct app_config *app_cfg)
 {
 	flexio_status result;
 	struct flexio_event_handler_attr event_handler_attr = {0};
-	event_handler_attr.host_stub_func = dns_filter_device_event_handler;
+	event_handler_attr.host_stub_func = vxlan_device_event_handler;
 	struct flexio_process_attr process_attr = { 0 };
 
 	/* Create FlexIO Process */
@@ -89,7 +90,7 @@ int setup_device(struct app_config *app_cfg)
 		struct dpa_process_context * ctx = (struct dpa_process_context *)calloc(1, sizeof(struct dpa_process_context));
 		app_cfg->context[i] = ctx;
 
-		ctx->mac_addr = (uint64_t)DST_MAC_BASE + i;
+		// ctx->mac_addr = (uint64_t)DST_MAC_BASE + i;
 
 		event_handler_attr.affinity.type = FLEXIO_AFFINITY_STRICT;
 		event_handler_attr.affinity.id = i;
@@ -122,7 +123,7 @@ int allocate_device_resources(struct app_config *app_cfg)
 
 	for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
 		struct dpa_process_context * ctx = app_cfg->context[i];
-		ctx->dev_data = (struct dns_filter_data *)calloc(1, sizeof(*ctx->dev_data));
+		ctx->dev_data = (struct host2dev_processor_data *)calloc(1, sizeof(*ctx->dev_data));
 		if (ctx->dev_data == NULL) {
 			printf("Could not allocate application data memory\n");
 			dev_queues_destroy(app_cfg);

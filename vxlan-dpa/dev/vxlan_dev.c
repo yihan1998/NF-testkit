@@ -230,22 +230,10 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx)
 	flexio_dev_dbr_rq_inc_pi(app_ctx.rq_ctx.rq_dbr);
 }
 
-/* Entry point function that host side call for the execute.
- *  thread_arg - pointer to the host2dev_packet_processor_data structure
- *     to transfer data from the host side.
- */
-flexio_dev_event_handler_t flexio_pp_dev;
-__dpa_global__ void flexio_pp_dev(uint64_t thread_arg)
+void __dpa_global__ dns_filter_device_event_handler(uint64_t index)
 {
-	struct host2dev_packet_processor_data *data_from_host = (void *)thread_arg;
 	struct flexio_dev_thread_ctx *dtctx;
-
-	/* If the thread is executed for first time, then initialize the context
-	 */
-	if (!data_from_host->not_first_run) {
-		app_ctx_init(data_from_host);
-		data_from_host->not_first_run = 1;
-	}
+    struct device_context *dev_ctx = &dev_ctxs[index];
 
 	/* Read the current thread context */
 	flexio_dev_get_thread_ctx(&dtctx);

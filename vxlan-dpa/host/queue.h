@@ -32,8 +32,8 @@ struct app_config {
 	struct dr_flow_table *tx_flow_root_table;
 };
 
-doca_error_t allocate_sq(struct app_config *app_cfg, struct dpa_process_context * ctx);
-doca_error_t allocate_rq(struct app_config *app_cfg, struct dpa_process_context * ctx);
+int allocate_sq(struct app_config *app_cfg, struct dpa_process_context * ctx);
+int allocate_rq(struct app_config *app_cfg, struct dpa_process_context * ctx);
 
 void cq_destroy(struct flexio_process *flexio_process, struct flexio_cq *cq, struct app_transfer_cq cq_transf);
 void sq_destroy(struct app_config *app_cfg, struct dpa_process_context * ctx);
