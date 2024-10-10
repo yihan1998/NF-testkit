@@ -79,7 +79,7 @@ int setup_device(struct app_config *app_cfg)
 	struct flexio_process_attr process_attr = { 0 };
 
 	/* Create FlexIO Process */
-	result = flexio_process_create(app_cfg->ibv_ctx, dns_filter_device, &process_attr, &app_cfg->flexio_process);
+	result = flexio_process_create(app_cfg->ibv_ctx, vxlan_dev, &process_attr, &app_cfg->flexio_process);
 	if (result != FLEXIO_STATUS_SUCCESS) {
 		printf("Could not create FlexIO process (%d)", result);
 		return -1;

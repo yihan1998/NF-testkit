@@ -230,7 +230,7 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx)
 	flexio_dev_dbr_rq_inc_pi(app_ctx.rq_ctx.rq_dbr);
 }
 
-void __dpa_global__ dns_filter_device_event_handler(uint64_t index)
+void __dpa_global__ vxlan_device_event_handler(uint64_t index)
 {
 	struct flexio_dev_thread_ctx *dtctx;
     struct device_context *dev_ctx = &dev_ctxs[index];
