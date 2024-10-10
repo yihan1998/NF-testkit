@@ -214,8 +214,11 @@ void ibv_device_destroy(struct app_config *app_cfg)
 
 int main(int argc, char ** argv)
 {
-	struct app_config app_cfg = {0};
 	int result;
+	struct app_config app_cfg = {
+		.device_name = "mlx5_0",
+		.nb_dpa_threads = 1,
+	};
 
 	printf("Open IB device and allocate PD...\n");
     result = setup_ibv_device(&app_cfg);
