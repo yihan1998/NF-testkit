@@ -32,11 +32,14 @@ srcs = [
 	'queue.c',
 ]
 
+inc = include_directories('..')
+
 # Build sample as executable application
 executable('vxlan',
 	srcs,
 	c_args: '-DDEV_APP_NAME='+dev_app_name,
 	native: true,
+        include_directories: inc,
 	dependencies: [flexio_dep, ibverbs_dep, mlx5_dep, doca_common_dep],
 	link_depends: sample_dev_target
 )

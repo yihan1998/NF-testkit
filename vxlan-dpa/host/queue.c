@@ -3,13 +3,37 @@
 #include <assert.h>
 #include <bsd/string.h>
 
-#include <doca_argp.h>
 #include <doca_log.h>
-
-#include "utils.h"
+#include <doca_error.h>
 
 #include "common.h"
 #include "queue.h"
+
+struct dpa_process_context {
+	struct dns_filter_data *dev_data;		/* device data */
+
+	struct flexio_event_handler *event_handler; /* Event handler on device */
+
+	struct flexio_mkey *rqd_mkey;
+	struct app_transfer_wq rq_transf;
+
+	struct flexio_mkey *sqd_mkey;
+	struct app_transfer_wq sq_transf;
+
+	struct flexio_cq *flexio_rq_cq_ptr; /* FlexIO RQ CQ */
+	struct flexio_cq *flexio_sq_cq_ptr; /* FlexIO SQ CQ */
+	struct flexio_rq *flexio_rq_ptr;    /* FlexIO RQ */
+	struct flexio_sq *flexio_sq_ptr;    /* FlexIO SQ */
+
+	/* FlexIO resources */
+	flexio_uintptr_t dev_data_daddr;	    /* Data address accessible by the device */
+	struct app_transfer_cq rq_cq_transf;
+	struct app_transfer_cq sq_cq_transf;
+
+	struct dr_flow_rule *rx_rule;
+	struct dr_flow_rule *tx_rule;
+	struct dr_flow_rule *tx_root_rule;
+};
 
 doca_error_t allocate_rq(struct app_config *app_cfg, struct dpa_process_context * ctx)
 {
