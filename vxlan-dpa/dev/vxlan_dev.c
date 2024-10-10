@@ -114,18 +114,17 @@ uint16_t htons(uint16_t hostshort);
 uint32_t htonl(uint32_t hostlong);
 uint32_t vxlan_encap(char *out_data, char *in_data, uint32_t in_data_size);
 
-__dpa_rpc__ uint64_t vxlan_device_init(struct host2dev_processor_data* data)
+__dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
 {
-	struct device_context *dev_ctx = &dev_ctxs[data->thread_index];
-	dev_ctx->lkey = data->sq_data.wqd_mkey_id;
-	init_cq(data->rq_cq_data, &dev_ctx->rq_cq_ctx);
-	init_rq(data->rq_data, &dev_ctx->rq_ctx);
-	init_cq(data->sq_cq_data, &dev_ctx->sq_cq_ctx);
-	init_sq(data->sq_data, &dev_ctx->sq_ctx);
-
-	dev_ctx->dt_ctx.sq_tx_buff = (void *)data->sq_data.wqd_daddr;
+	struct host2dev_processor_data *shared_data = (struct host2dev_processor_data *)data;
+	struct device_context *dev_ctx = &dev_ctxs[shared_data->thread_index];
+	dev_ctx->lkey = shared_data->sq_data.wqd_mkey_id;
+	init_cq(shared_data->rq_cq_data, &dev_ctx->rq_cq_ctx);
+	init_rq(shared_data->rq_data, &dev_ctx->rq_ctx);
+	init_cq(shared_data->sq_cq_data, &dev_ctx->sq_cq_ctx);
+	init_sq(shared_data->sq_data, &dev_ctx->sq_ctx);
+	dev_ctx->dt_ctx.sq_tx_buff = (void *)shared_data->sq_data.wqd_daddr;
 	dev_ctx->dt_ctx.tx_buff_idx = 0;
-
 	dev_ctx->is_initalized = 1;
 	return 0;
 }
