@@ -29,11 +29,21 @@
 
 # The meson file for build packet processor host side sample
 
+dependencies = [libflexio_host]
+dependencies += dependency('libibverbs')
+dependencies += dependency('libmlx5')
+dependencies += dependency('doca')
+
+srcs = [
+    'vxlan_host.c',
+	'queue.c',
+]
+
 # Build sample as executable application
 executable('vxlan',
-	['vxlan_host.c'],
+	srcs,
 	c_args: '-DDEV_APP_NAME='+dev_app_name,
 	native: true,
-	dependencies: [ibverbs_dep, mlx5_dep, flexio_dep, sample_device_dep],
+	dependencies: dependencies,
 	link_depends: sample_dev_target
 )
