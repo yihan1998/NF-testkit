@@ -27,13 +27,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-# The meson file for build packet processor host side sample
-
-dependencies = [libflexio_host]
-dependencies += dependency('libibverbs')
-dependencies += dependency('libmlx5')
-dependencies += dependency('doca')
-
 srcs = [
     'vxlan_host.c',
 	'queue.c',
@@ -44,6 +37,6 @@ executable('vxlan',
 	srcs,
 	c_args: '-DDEV_APP_NAME='+dev_app_name,
 	native: true,
-	dependencies: dependencies,
+	dependencies: [flexio_dep, ibverbs_dep, mlx5_dep, doca_dep],
 	link_depends: sample_dev_target
 )
