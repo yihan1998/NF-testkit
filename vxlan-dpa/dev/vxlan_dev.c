@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <dpaintrin.h>
 
-#include "../vxlan_common.h"
+#include "../common.h"
 
 /* Mask for CQ index */
 #define CQ_IDX_MASK ((1 << LOG_CQ_DEPTH) - 1)

@@ -29,15 +29,6 @@ struct app_transfer_wq {
 	flexio_uintptr_t wqd_daddr;
 } __attribute__((__packed__, aligned(8)));
 
-/* Transport data from HOST application to DEV application */
-struct dns_filter_data {
-	struct app_transfer_cq rq_cq_data; /* device RQ's CQ */
-	struct app_transfer_wq rq_data;	   /* device RQ */
-	struct app_transfer_cq sq_cq_data; /* device SQ's CQ */
-	struct app_transfer_wq sq_data;	   /* device SQ */
-	uint32_t thread_index;
-} __attribute__((__packed__, aligned(8)));
-
 /* Collateral structure for transfer host data to device */
 struct host2dev_processor_data {
 	/* RQ's CQ transfer information. */

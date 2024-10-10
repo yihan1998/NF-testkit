@@ -6,7 +6,7 @@
 #include <libflexio/flexio.h>
 #include <doca_dev.h>
 
-#include "vxlan_common.h"
+#include "common.h"
 
 struct app_config;
 struct dpa_process_context;
@@ -18,6 +18,5 @@ void cq_destroy(struct flexio_process *flexio_process, struct flexio_cq *cq, str
 void sq_destroy(struct app_config *app_cfg, struct dpa_process_context * ctx);
 void rq_destroy(struct app_config *app_cfg, struct dpa_process_context * ctx);
 void dev_queues_destroy(struct app_config *app_cfg);
-
 
 #endif  /* _QUEUE_H_ */

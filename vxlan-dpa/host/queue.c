@@ -1,3 +1,16 @@
+#include <infiniband/mlx5_api.h>
+
+#include <assert.h>
+#include <bsd/string.h>
+
+#include <doca_argp.h>
+#include <doca_log.h>
+
+#include "utils.h"
+
+#include "common.h"
+#include "queue.h"
+
 doca_error_t allocate_rq(struct app_config *app_cfg, struct dpa_process_context * ctx)
 {
 	doca_error_t result;

@@ -17,6 +17,6 @@ doca_dep = dependency('doca', required: true)
 add_project_arguments('-D DOCA_ALLOW_EXPERIMENTAL_API', language: ['c', 'cpp'])
 
 dev_app_name = 'vxlan'
-shared_include_files = [join_paths(meson.current_source_dir(),'vxlan_common.h')]
+shared_include_files = [join_paths(meson.current_source_dir(),'common.h')]
 subdir('dev')
 subdir('host')
