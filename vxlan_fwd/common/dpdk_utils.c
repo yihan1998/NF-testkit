@@ -686,12 +686,14 @@ dpdk_queues_and_ports_init(struct application_dpdk_config *app_dpdk_config)
 
 	/* Enable hairpin queues */
 	if (app_dpdk_config->port_config.nb_hairpin_q > 0) {
+		fprintf(stderr, "Enable hairpin queues...\n");
 		result = enable_hairpin_queues(app_dpdk_config->port_config.nb_ports);
 		if (result != DOCA_SUCCESS)
 			goto ports_cleanup;
 	}
 
 	if (app_dpdk_config->sft_config.enable) {
+		fprintf(stderr, "Enable sft_config...\n");
 		result = dpdk_sft_init(app_dpdk_config);
 		if (result != DOCA_SUCCESS)
 			goto hairpin_queues_cleanup;
