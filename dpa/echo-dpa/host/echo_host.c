@@ -693,6 +693,12 @@ int main(int argc, char ** argv)
 		.nb_dpa_threads = 1,
 	};
 
+	printf("Init DPDK...\n");
+	rte_eal_init(argc, argv);
+
+	printf("Config DPDK...\n");
+	config_ports();
+
 	printf("Open IB device and allocate PD...\n");
     result = setup_ibv_device(&app_cfg);
 	if (result < 0) {
@@ -752,6 +758,7 @@ int main(int argc, char ** argv)
 	while (!force_quit) {
         flexio_msg_stream_flush(default_stream);
 		sleep(1);
+		run_dpdk_loop();
 	}
 
 	echo_destroy(&app_cfg);
