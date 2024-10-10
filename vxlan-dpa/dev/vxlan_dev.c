@@ -1,8 +1,10 @@
+#include <stddef.h>
+#include <libflexio-libc/stdio.h>
+#include <libflexio-libc/string.h>
 #include <libflexio-dev/flexio_dev_err.h>
 #include <libflexio-dev/flexio_dev_queue_access.h>
 #include <libflexio-libc/string.h>
 #include <stdint.h>
-#include <stddef.h>
 #include <dpaintrin.h>
 
 #include "../common.h"
