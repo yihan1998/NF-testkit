@@ -216,7 +216,7 @@ uint32_t vxlan_encap(char *out_data, char *in_data, uint32_t in_data_size)
     new_udp_hdr->len=htons(pkt_size+sizeof(struct udphdr)+sizeof(struct vxlanhdr));
     vxlan_hdr->flags=htonl(0x08000000);
     vxlan_hdr->vni_reserved2=htonl(0x123456);
-	return 0;
+	return new_hdr_size+in_data_size;
 }
 
 /* process packet - read it, swap MAC addresses, modify it, create a send WQE and send it back
