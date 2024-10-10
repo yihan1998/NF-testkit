@@ -24,6 +24,13 @@ extern struct flexio_app *DEV_APP_NAME;
 extern flexio_func_t vxlan_device_init;
 extern flexio_func_t vxlan_device_event_handler;
 
+void vxlan_steering_rules_destroy(struct app_config *app_cfg);
+void vxlan_device_destroy(struct app_config *app_cfg);
+void vxlan_ibv_device_destroy(struct app_config *app_cfg);
+void vxlan_destroy(struct app_config *app_cfg);
+void vxlan_device_resources_destroy(struct app_config *app_cfg);
+void vxlan_device_destroy(struct app_config *app_cfg);
+
 static void signal_handler(int signum)
 {
 	if (signum == SIGINT || signum == SIGTERM) {
