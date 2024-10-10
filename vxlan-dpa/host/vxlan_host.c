@@ -12,7 +12,6 @@
 #include <doca_log.h>
 
 #include "queue.h"
-#include "vxlan_host.h"
 
 static struct ibv_context *open_ibv_device(const char *device_name)
 {
