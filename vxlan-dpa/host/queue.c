@@ -9,31 +9,46 @@
 #include "common.h"
 #include "queue.h"
 
-struct dpa_process_context {
-	struct dns_filter_data *dev_data;		/* device data */
+static doca_error_t allocate_cq_memory(struct flexio_process *process, int log_depth, struct app_transfer_cq *app_cq)
+{
+	struct mlx5_cqe64 *cq_ring_src, *cqe;
+	size_t ring_bsize;
+	int i, num_of_cqes;
+	const int log_cqe_bsize = 6; /* CQE size is 64 bytes */
+	doca_error_t result = DOCA_SUCCESS;
+	flexio_status ret;
 
-	struct flexio_event_handler *event_handler; /* Event handler on device */
+	/* Allocate DB record */
+	result = allocate_dbr(process, &app_cq->cq_dbr_daddr);
+	if (result != DOCA_SUCCESS) {
+		DOCA_LOG_ERR("Failed to allocate CQ DB record");
+		return result;
+	}
 
-	struct flexio_mkey *rqd_mkey;
-	struct app_transfer_wq rq_transf;
+	num_of_cqes = LOG2VALUE(log_depth);
+	ring_bsize = num_of_cqes * LOG2VALUE(log_cqe_bsize);
 
-	struct flexio_mkey *sqd_mkey;
-	struct app_transfer_wq sq_transf;
+	cq_ring_src = calloc(num_of_cqes, LOG2VALUE(log_cqe_bsize));
 
-	struct flexio_cq *flexio_rq_cq_ptr; /* FlexIO RQ CQ */
-	struct flexio_cq *flexio_sq_cq_ptr; /* FlexIO SQ CQ */
-	struct flexio_rq *flexio_rq_ptr;    /* FlexIO RQ */
-	struct flexio_sq *flexio_sq_ptr;    /* FlexIO SQ */
+	if (cq_ring_src == NULL) {
+		DOCA_LOG_ERR("Failed to allocate CQ ring");
+		return DOCA_ERROR_NO_MEMORY;
+	}
 
-	/* FlexIO resources */
-	flexio_uintptr_t dev_data_daddr;	    /* Data address accessible by the device */
-	struct app_transfer_cq rq_cq_transf;
-	struct app_transfer_cq sq_cq_transf;
+	cqe = cq_ring_src;
+	for (i = 0; i < num_of_cqes; i++)
+		mlx5dv_set_cqe_owner(cqe++, 1);
 
-	struct dr_flow_rule *rx_rule;
-	struct dr_flow_rule *tx_rule;
-	struct dr_flow_rule *tx_root_rule;
-};
+	/* Copy CQEs from host to FlexIO CQ ring */
+	ret = flexio_copy_from_host(process, cq_ring_src, ring_bsize, &app_cq->cq_ring_daddr);
+	free(cq_ring_src);
+	if (ret) {
+		DOCA_LOG_ERR("Failed to allocate CQ ring");
+		return DOCA_ERROR_DRIVER;
+	}
+
+	return DOCA_SUCCESS;
+}
 
 doca_error_t allocate_rq(struct app_config *app_cfg, struct dpa_process_context * ctx)
 {
