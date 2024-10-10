@@ -3,6 +3,17 @@ app_out_name = dev_app_name + '.a'
 
 build_dpacc = find_program('/opt/mellanox/flexio/samples/doca_build_dpacc.sh', required: true)
 
+dpacc_devicecc_array = ['-DE_MODE_LE',
+			'-Wall',
+			'-Wextra',
+			'-Wpedantic',
+			'-Wdouble-promotion',
+			'-Wno-empty-translation-unit',
+			'-Wmissing-prototypes',
+			'-Wstrict-prototypes',
+			'-ffreestanding',
+			'-mcmodel=medany',]
+			
 sample_dev_target = custom_target('apps_' + dev_app_name,
 				  command: [build_dpacc, '--application',
 					    '--app_name', dev_app_name,
