@@ -295,3 +295,43 @@ int allocate_sq(struct app_config *app_cfg, struct dpa_process_context * ctx)
 
 	return 0;
 }
+
+void rq_destroy(struct app_cfg *app_cfg, struct dpa_process_context * ctx)
+{
+	flexio_status ret = FLEXIO_STATUS_SUCCESS;
+
+	ret |= flexio_rq_destroy(ctx->flexio_rq_ptr);
+	ret |= flexio_device_mkey_destroy(ctx->rqd_mkey);
+	ret |= flexio_buf_dev_free(app_cfg->flexio_process, ctx->rq_transf.wq_dbr_daddr);
+	ret |= flexio_buf_dev_free(app_cfg->flexio_process, ctx->rq_transf.wq_ring_daddr);
+	ret |= flexio_buf_dev_free(app_cfg->flexio_process, ctx->rq_transf.wqd_daddr);
+
+	if (ret != FLEXIO_STATUS_SUCCESS)
+		printf("Failed to destroy RQ\n");
+}
+
+void sq_destroy(struct app_cfg *app_cfg, struct dpa_process_context * ctx)
+{
+	flexio_status ret = FLEXIO_STATUS_SUCCESS;
+
+	ret |= flexio_sq_destroy(ctx->flexio_sq_ptr);
+	ret |= flexio_device_mkey_destroy(ctx->sqd_mkey);
+	ret |= flexio_buf_dev_free(app_cfg->flexio_process, ctx->sq_transf.wq_dbr_daddr);
+	ret |= flexio_buf_dev_free(app_cfg->flexio_process, ctx->sq_transf.wq_ring_daddr);
+	ret |= flexio_buf_dev_free(app_cfg->flexio_process, ctx->sq_transf.wqd_daddr);
+
+	if (ret != FLEXIO_STATUS_SUCCESS)
+		printf("Failed to destroy SQ\n");
+}
+
+void cq_destroy(struct flexio_process *flexio_process, struct flexio_cq *cq, struct app_transfer_cq cq_transf)
+{
+	flexio_status ret = FLEXIO_STATUS_SUCCESS;
+
+	ret |= flexio_cq_destroy(cq);
+	ret |= flexio_buf_dev_free(flexio_process, cq_transf.cq_ring_daddr);
+	ret |= flexio_buf_dev_free(flexio_process, cq_transf.cq_dbr_daddr);
+
+	if (ret != FLEXIO_STATUS_SUCCESS)
+		printf("Failed to destroy CQ\n");
+}

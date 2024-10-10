@@ -13,6 +13,9 @@
 
 #include "queue.h"
 
+/* This should be generated */
+extern flexio_func_t vxlan_device_init;
+
 static struct ibv_context *open_ibv_device(const char *device_name)
 {
 	struct ibv_device **dev_list;
@@ -151,21 +154,21 @@ void dev_queues_destroy(struct app_config *app_cfg)
 {
 	for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
 		struct dpa_process_context * ctx = app_cfg->context[i];
-		dns_filter_rq_destroy(app_cfg, ctx);
-		dns_filter_sq_destroy(app_cfg, ctx);
-		dns_filter_cq_destroy(app_cfg->flexio_process, ctx->flexio_rq_cq_ptr, ctx->rq_cq_transf);
-		dns_filter_cq_destroy(app_cfg->flexio_process, ctx->flexio_sq_cq_ptr, ctx->sq_cq_transf);
+		rq_destroy(app_cfg, ctx);
+		sq_destroy(app_cfg, ctx);
+		cq_destroy(app_cfg->flexio_process, ctx->flexio_rq_cq_ptr, ctx->rq_cq_transf);
+		cq_destroy(app_cfg->flexio_process, ctx->flexio_sq_cq_ptr, ctx->sq_cq_transf);
 	}
 }
 
-int run_device_process(struct dns_filter_config *app_cfg)
+int run_device_process(struct app_config *app_cfg)
 {
 	int ret = 0;
 	uint64_t rpc_ret_val;
 	for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
 		struct dpa_process_context * ctx = app_cfg->context[i];
 		ret = flexio_process_call(app_cfg->flexio_process,
-					&dns_filter_device_init,
+					&vxlan_device_init,
 					&rpc_ret_val,
 					ctx->dev_data_daddr);
 		if (ret != FLEXIO_STATUS_SUCCESS) {
@@ -175,6 +178,16 @@ int run_device_process(struct dns_filter_config *app_cfg)
 	}
 
 	return 0;
+}
+
+void device_resources_destroy(struct app_config *app_cfg)
+{
+	dev_queues_destroy(app_cfg);
+	for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
+		struct dpa_process_context * ctx = app_cfg->context[i];
+		flexio_buf_dev_free(app_cfg->flexio_process, ctx->dev_data_daddr);
+		free(ctx->dev_data);
+	}
 }
 
 void device_destroy(struct app_config *app_cfg)
@@ -191,7 +204,7 @@ void device_destroy(struct app_config *app_cfg)
     }
 }
 
-void dns_filter_ibv_device_destroy(struct app_config *app_cfg)
+void ibv_device_destroy(struct app_config *app_cfg)
 {
 	ibv_dealloc_pd(app_cfg->pd);
 }
