@@ -8,12 +8,10 @@ inc_dirs = [
 	include_directories('.'),
 ]
 
-libverbs_dep = dependency('libibverbs', required: true)
+ibverbs_dep = dependency('libibverbs', required: true)
 mlx5_dep = dependency('libmlx5', required: true)
 thread_dep = dependency('threads', required: true)
 flexio_dep = dependency('libflexio', required: true)
-
-libflexio_host = dependency('libflexio')
 
 add_project_arguments('-D DOCA_ALLOW_EXPERIMENTAL_API', language: ['c', 'cpp'])
 
