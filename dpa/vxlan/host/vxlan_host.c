@@ -16,6 +16,7 @@
 #include "dpdk.h"
 
 #define MATCH_SIZE 64		  /* DR Matcher size */
+#define PRINTF_BUFF_BSIZE (4 * 2048)
 
 static bool force_quit; /* Set to true to terminate the application */
 struct flexio_msg_stream *default_stream;
