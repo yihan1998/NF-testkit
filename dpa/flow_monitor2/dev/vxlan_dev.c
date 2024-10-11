@@ -148,6 +148,8 @@ __dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
 		return -1;
     }
 
+	flexio_dev_print("Init packet count %lu\n", *dev_ctx->host_buffer);
+
 	return 0;
 }
 
