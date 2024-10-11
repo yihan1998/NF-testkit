@@ -782,7 +782,7 @@ int main(int argc, char ** argv)
 	/* Add an additional new line for output readability */
 	printf("Press Ctrl+C to terminate\n");
 	while (!force_quit) {
-        // flexio_msg_stream_flush(default_stream);
+        flexio_msg_stream_flush(default_stream);
 		sleep(1);
 		run_dpdk_loop();
 		for (int i = 0; i < MAX_NB_THREAD; i++) {
