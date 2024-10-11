@@ -131,7 +131,7 @@ int setup_device(struct app_config *app_cfg)
 	}
 
     /* Create FlexIO Window */
-	result = flexio_window_create(app_cfg->flexio_process, app_cfg->pd, &app->flexio_window);
+	result = flexio_window_create(app_cfg->flexio_process, app_cfg->pd, &app_cfg->flexio_window);
 	if (ret != FLEXIO_STATUS_SUCCESS) {
 		printf("Failed to create FlexIO window\n");
 		return -1;
@@ -186,7 +186,7 @@ int allocate_device_resources(struct app_config *app_cfg)
 	memset(app_cfg->host_buffer, 0, mat_bsize);
 
 	app_cfg->mr = ibv_reg_mr(app_cfg->pd, app_cfg->host_buffer, mat_bsize, IBV_ACCESS_LOCAL_WRITE);
-	if (mr == NULL) {
+	if (app_cfg->mr == NULL) {
 		printf("Failed to register MR\n");
 		return -1;
 	}
@@ -205,7 +205,7 @@ int allocate_device_resources(struct app_config *app_cfg)
 		ctx->dev_data->rq_cq_data = ctx->rq_cq_transf;
 		ctx->dev_data->rq_data = ctx->rq_transf;
 		ctx->dev_data->thread_index = i;
-        ctx->dev_data->window_id = flexio_window_get_id(app_ctx->flexio_window);
+        ctx->dev_data->window_id = flexio_window_get_id(app_cfg->flexio_window);
         ctx->dev_data->mkey = app_cfg->mr->lkey;
         ctx->dev_data->haddr = (uintptr_t)app_cfg->host_buffer;
 

@@ -18,6 +18,7 @@ struct app_config {
 	struct ibv_pd *pd;	     /* Protection domain */
 
 	int nb_dpa_threads;
+	char * host_buffer;
 
 	struct flexio_process *flexio_process;	    /* FlexIO process */
 	struct flexio_uar *flexio_uar;		    /* FlexIO UAR */
