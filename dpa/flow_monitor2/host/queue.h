@@ -15,11 +15,14 @@ struct app_config {
 	/* IB Verbs resources */
 	struct ibv_context *ibv_ctx; /* IB device context */
 	struct ibv_pd *pd;	     /* Protection domain */
+	struct ibv_mr *mr;			/* Memory region */
 
 	int nb_dpa_threads;
+	char * host_buffer;
 
 	struct flexio_process *flexio_process;	    /* FlexIO process */
 	struct flexio_uar *flexio_uar;		    /* FlexIO UAR */
+	struct flexio_window *flexio_window;	/* FlexIO window */
 
 	struct dpa_process_context * context[MAX_NB_THREAD];
 

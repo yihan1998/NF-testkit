@@ -130,6 +130,13 @@ int setup_device(struct app_config *app_cfg)
 		return -1;
 	}
 
+	/* Create FlexIO Window */
+	result = flexio_window_create(app_cfg->flexio_process, app_cfg->pd, &app_cfg->flexio_window);
+	if (result != FLEXIO_STATUS_SUCCESS) {
+		printf("Failed to create FlexIO window\n");
+		return -1;
+	}
+
 	app_cfg->flexio_uar = flexio_process_get_uar(app_cfg->flexio_process);
 
 	for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
@@ -166,6 +173,19 @@ int allocate_device_resources(struct app_config *app_cfg)
 		result = allocate_rq(app_cfg, ctx);
 		if (result < 0)
 			return result;
+	}
+
+	int mat_bsize = MAX_NB_THREAD * sizeof(uint32_t);
+    if (posix_memalign((void *) &app_cfg->host_buffer, MR_BASE_ALIGNMENT, mat_bsize) != 0) {
+		printf("Failed to allocate memory\n");
+		return -1;
+	}
+	memset(app_cfg->host_buffer, 0, mat_bsize);
+
+	app_cfg->mr = ibv_reg_mr(app_cfg->pd, app_cfg->host_buffer, mat_bsize, IBV_ACCESS_LOCAL_WRITE);
+	if (app_cfg->mr == NULL) {
+		printf("Failed to register MR\n");
+		return -1;
 	}
 
 	for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
