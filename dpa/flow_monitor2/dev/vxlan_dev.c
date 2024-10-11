@@ -117,6 +117,8 @@ void swap_macs(char *packet);
 
 __dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
 {
+	flexio_dev_print("Initializing device...\n");
+
 	struct host2dev_processor_data *shared_data = (struct host2dev_processor_data *)data;
 	struct device_context *dev_ctx = &dev_ctxs[shared_data->thread_index];
 	dev_ctx->lkey = shared_data->sq_data.wqd_mkey_id;
