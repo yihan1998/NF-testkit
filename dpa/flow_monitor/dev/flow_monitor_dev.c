@@ -155,54 +155,19 @@ struct ethhdr {
     uint16_t h_proto;
 };
 
-struct iphdr {
-    uint8_t  ihl:4,
-             version:4;
-    uint8_t  tos;
-    uint16_t tot_len;
-    uint16_t id;
-    uint16_t frag_off;
-    uint8_t  ttl;
-    uint8_t  protocol;
-    uint16_t check;
-    uint32_t saddr;
-    uint32_t daddr;
-};
-
-struct udphdr {
-    uint16_t source;
-    uint16_t dest;
-    uint16_t len;
-    uint16_t check;
-};
-
-struct vxlanhdr {
-    uint8_t  flags;
-    uint8_t  reserved1[3];
-    uint32_t vni_reserved2;
-};
-
-#define SET_MAC_ADDR(addr, a, b, c, d, e, f)\
-do {\
-	addr[0] = a & 0xff;\
-	addr[1] = b & 0xff;\
-	addr[2] = c & 0xff;\
-	addr[3] = d & 0xff;\
-	addr[4] = e & 0xff;\
-	addr[5] = f & 0xff;\
-} while (0)
-
 /* Return size of packet */
 uint32_t flow_monitor(struct device_context *dev_ctx, char *out_data, char *in_data, uint32_t in_data_size)
 {
     uint32_t pkt_size=in_data_size;
     memcpy(out_data,in_data,in_data_size);
-    struct ethhdr *orig_eth_hdr = (struct ethhdr *)in_data;
+    struct ethhdr *eth_hdr = (struct ethhdr *)in_data;
+    char tmp[6];
+    SET_MAC_ADDR(tmp,eth_hdr->h_source[0],eth_hdr->h_source[1],eth_hdr->h_source[2],eth_hdr->h_source[3],eth_hdr->h_source[4],eth_hdr->h_source[5]);
+    SET_MAC_ADDR(eth_hdr->h_source,eth_hdr->h_dest[0],eth_hdr->h_dest[1],eth_hdr->h_dest[2],eth_hdr->h_dest[3],eth_hdr->h_dest[4],eth_hdr->h_dest[5]);
+    SET_MAC_ADDR(eth_hdr->h_dest,tmp[0],tmp[1],tmp[2],tmp[3],tmp[4],tmp[5]);
     int key=dev_ctx->index;
-    SET_MAC_ADDR(new_eth_hdr->h_source,dst_mac[0],dst_mac[1],dst_mac[2],dst_mac[3],dst_mac[4],dst_mac[5]);
-    SET_MAC_ADDR(new_eth_hdr->h_dest,src_mac[0],src_mac[1],src_mac[2],src_mac[3],src_mac[4],src_mac[5]);
     host_buffer[key]=host_buffer[key]+1;
-	return in_data_size;
+	return pkt_size;
 }
 
 /* process packet - read it, swap MAC addresses, modify it, create a send WQE and send it back
