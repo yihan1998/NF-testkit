@@ -204,6 +204,9 @@ int allocate_device_resources(struct app_config *app_cfg)
 		ctx->dev_data->rq_cq_data = ctx->rq_cq_transf;
 		ctx->dev_data->rq_data = ctx->rq_transf;
 		ctx->dev_data->thread_index = i;
+		ctx->dev_data->window_id = flexio_window_get_id(app_cfg->flexio_window);
+		ctx->dev_data->mkey = app_cfg->mr->lkey;
+		ctx->dev_data->haddr = app_cfg->host_buffer;
 
 		ret = flexio_copy_from_host(app_cfg->flexio_process,
 						ctx->dev_data,

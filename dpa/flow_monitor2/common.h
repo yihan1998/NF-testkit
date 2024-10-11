@@ -45,6 +45,9 @@ struct host2dev_processor_data {
 	struct app_transfer_wq sq_data;
     /* Thread index */
 	uint32_t thread_index;
+	uint32_t window_id;		/* FlexIO Window ID */
+	uint32_t mkey;			/* Memory key for the result matrix */
+	uint64_t haddr;			/* Host address for the result matrix */
 } __attribute__((__packed__, aligned(8)));
 
 struct mlx5_ifc_dr_match_spec_bits {

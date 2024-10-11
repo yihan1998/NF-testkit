@@ -126,6 +126,27 @@ __dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
 	dev_ctx->dt_ctx.sq_tx_buff = (void *)shared_data->sq_data.wqd_daddr;
 	dev_ctx->dt_ctx.tx_buff_idx = 0;
 	dev_ctx->is_initalized = 1;
+
+	flexio_dev_status_t result;
+	struct flexio_dev_thread_ctx *dtctx;
+
+	/* Read the current thread context */
+	flexio_dev_get_thread_ctx(&dtctx);
+
+    /* Configure FlexIO Window */
+	result = flexio_dev_window_config(dtctx, shared_data->window_id, shared_data->mkey);
+	if (result != FLEXIO_DEV_STATUS_SUCCESS) {
+		flexio_dev_print("Failed to configure FlexIO window\n");
+		return -1;
+    }
+
+    /* Acquire device pointer to host memory */
+	result = flexio_dev_window_ptr_acquire(dtctx, shared_data->haddr, (flexio_uintptr_t *)&dev_ctx->host_buffer);
+	if (result != FLEXIO_DEV_STATUS_SUCCESS) {
+		flexio_dev_print("Failed to acquire FlexIO window ptr\n");
+		return -1;
+    }
+
 	return 0;
 }
 
