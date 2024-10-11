@@ -119,7 +119,6 @@ uint32_t flow_monitor(struct device_context *dev_ctx, char *out_data, char *in_d
 
 __dpa_rpc__ uint64_t flow_monitor_device_init(uint64_t data)
 {
-	flexio_dev_status_t result;
 	struct host2dev_processor_data *shared_data = (struct host2dev_processor_data *)data;
 	struct device_context *dev_ctx = &dev_ctxs[shared_data->thread_index];
 	dev_ctx->lkey = shared_data->sq_data.wqd_mkey_id;
@@ -132,6 +131,7 @@ __dpa_rpc__ uint64_t flow_monitor_device_init(uint64_t data)
 	dev_ctx->is_initalized = 1;
     dev_ctx->index=shared_data->thread_index;
 #if 0
+	flexio_dev_status_t result;
 	struct flexio_dev_thread_ctx *dtctx;
 
 	/* Read the current thread context */
