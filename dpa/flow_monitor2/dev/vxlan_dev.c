@@ -45,6 +45,7 @@ struct dt_ctx_t {
 static struct device_context {
 	/* Packet count - used for debug message */
 	uint64_t packets_count;
+	int32_t *host_buffer;
 
 	uint32_t lkey;				/* Local memory key */
 	uint32_t is_initalized;		/* Initialization flag */
