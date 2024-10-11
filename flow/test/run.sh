@@ -1,0 +1,1 @@
+sudo ./build/test -l 0 -n 4 -a 03:00.1,dv_flow_en=2

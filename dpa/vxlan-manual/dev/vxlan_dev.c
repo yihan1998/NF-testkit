@@ -111,9 +111,8 @@ static void step_cq(struct cq_ctx_t *cq_ctx, uint32_t cq_idx_mask)
 uint64_t vxlan_device_init(uint64_t data);
 flexio_dev_event_handler_t vxlan_device_event_handler; /* Event handler function */
 
-uint16_t htons(uint16_t hostshort);
 uint32_t htonl(uint32_t hostlong);
-uint32_t vxlan_encap(char *out_data, char *in_data, uint32_t in_data_size);
+void swap_macs(char *packet);
 
 __dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
 {
@@ -130,15 +129,27 @@ __dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
 	return 0;
 }
 
-#define SET_MAC_ADDR(addr, a, b, c, d, e, f)\
-do {\
-	addr[0] = a & 0xff;\
-	addr[1] = b & 0xff;\
-	addr[2] = c & 0xff;\
-	addr[3] = d & 0xff;\
-	addr[4] = e & 0xff;\
-	addr[5] = f & 0xff;\
-} while (0)
+#define SWAP(a, b) \
+	do { \
+		__typeof__(a) tmp;  \
+		tmp = a;            \
+		a = b;              \
+		b = tmp;            \
+	} while (0)
+
+/* Swap source and destination MAC addresses in the packet.
+ *  packet - pointer to the packet.
+ */
+void swap_macs(char *packet)
+{
+	char *dmac, *smac;
+	int i;
+
+	dmac = packet;
+	smac = packet + 6;
+	for (i = 0; i < 6; i++, dmac++, smac++)
+		SWAP(*smac, *dmac);
+}
 
 uint32_t htonl(uint32_t hostlong)
 {
@@ -186,9 +197,7 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
 	sq_data_size = data_sz + 50;
     memcpy(sq_data + 50, rq_data, data_sz);
     memcpy(sq_data, rq_data, 42);
-
-    SET_MAC_ADDR((uint8_t *)sq_data, rq_data[0], rq_data[1], rq_data[2], rq_data[3], rq_data[4], rq_data[5]);
-	SET_MAC_ADDR((uint8_t *)(sq_data + 6), rq_data[6], rq_data[7], rq_data[8], rq_data[9], rq_data[10], rq_data[11]);
+	swap_macs(sq_data);
 
 	*(uint32_t *)(sq_data + 30) = htonl(0x08000000);
     *(uint32_t *)(sq_data + 34) = htonl(0x123456);
