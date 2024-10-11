@@ -150,7 +150,7 @@ __dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
 		return -1;
     }
 
-	flexio_dev_print("Init packet count %lu\n", *dev_ctx->host_buffer);
+	flexio_dev_print("Init packet count %lu(%p)\n", *dev_ctx->host_buffer, dev_ctx->host_buffer);
 
 	return 0;
 }
@@ -265,7 +265,7 @@ void __dpa_global__ vxlan_device_event_handler(uint64_t index)
 	 */
 	while (flexio_dev_cqe_get_owner(dev_ctx->rq_cq_ctx.cqe) != dev_ctx->rq_cq_ctx.cq_hw_owner_bit) {
 		/* Print the message */
-		flexio_dev_print("Process packet: %ld, seen packet: %lu\n", dev_ctx->packets_count++, *dev_ctx->host_buffer);
+		flexio_dev_print("Process packet: %ld, seen packet: %lu(%p)\n", dev_ctx->packets_count++, *dev_ctx->host_buffer, dev_ctx->host_buffer);
 		/* Update memory to DPA */
 		__dpa_thread_fence(__DPA_MEMORY, __DPA_R, __DPA_R);
 		/* Process the packet */
