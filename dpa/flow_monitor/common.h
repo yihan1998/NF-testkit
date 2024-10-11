@@ -45,12 +45,12 @@ struct host2dev_processor_data {
 	struct app_transfer_wq sq_data;
     /* Thread index */
 	uint32_t thread_index;
-	/* FlexIO Window ID */
-	uint32_t window_id;
-	/* Memory key for the host data */
-	uint32_t mkey;
-	/* Host address for the buffer */
-	uint64_t haddr;
+	// /* FlexIO Window ID */
+	// uint32_t window_id;
+	// /* Memory key for the host data */
+	// uint32_t mkey;
+	// /* Host address for the buffer */
+	// uint64_t haddr;
 } __attribute__((__packed__, aligned(8)));
 
 struct mlx5_ifc_dr_match_spec_bits {
@@ -113,7 +113,7 @@ struct dr_flow_rule {
 
 struct dpa_process_context {
 	uint64_t mac_addr;
-	uint32_t *host_buffer;
+	// uint32_t *host_buffer;
 
 	struct host2dev_processor_data *dev_data;		/* device data */
 

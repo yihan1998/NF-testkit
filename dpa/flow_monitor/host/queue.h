@@ -22,7 +22,7 @@ struct app_config {
 
 	struct flexio_process *flexio_process;	    /* FlexIO process */
 	struct flexio_uar *flexio_uar;		    /* FlexIO UAR */
-	struct flexio_window *flexio_window;	/* FlexIO window */
+	// struct flexio_window *flexio_window;	/* FlexIO window */
 
 	struct dpa_process_context * context[MAX_NB_THREAD];
 
