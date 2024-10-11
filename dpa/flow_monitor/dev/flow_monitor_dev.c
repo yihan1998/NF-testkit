@@ -115,6 +115,7 @@ flexio_dev_event_handler_t flow_monitor_device_event_handler; /* Event handler f
 
 uint16_t htons(uint16_t hostshort);
 uint32_t htonl(uint32_t hostlong);
+void swap_macs(char *packet);
 uint32_t flow_monitor(struct device_context *dev_ctx, char *out_data, char *in_data, uint32_t in_data_size);
 
 __dpa_rpc__ uint64_t flow_monitor_device_init(uint64_t data)
