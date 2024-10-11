@@ -56,16 +56,16 @@ static doca_error_t create_match_pipe(struct doca_flow_port *port, int port_id, 
 	/* 5 tuple match */
 	match.parser_meta.outer_l3_type = DOCA_FLOW_L3_META_IPV4;
 	match.outer.l3_type = DOCA_FLOW_L3_TYPE_IP4;
-	match.outer.ip4.src_ip = 0xffffffff;
-	match.outer.ip4.dst_ip = 0xffffffff;
-	match.outer.l4_type_ext = DOCA_FLOW_L4_TYPE_EXT_TRANSPORT;
-	match.outer.transport.src_port = 0xffff;
-	match.outer.transport.dst_port = 0xffff;
+	// match.outer.ip4.src_ip = 0xffffffff;
+	// match.outer.ip4.dst_ip = 0xffffffff;
+	// match.outer.l4_type_ext = DOCA_FLOW_L4_TYPE_EXT_TRANSPORT;
+	// match.outer.transport.src_port = 0xffff;
+	// match.outer.transport.dst_port = 0xffff;
 
 	/* set meta data to match on the egress domain */
 	actions.meta.pkt_meta = UINT32_MAX;
-	actions.outer.l4_type_ext = DOCA_FLOW_L4_TYPE_EXT_TRANSPORT;
-	actions.outer.transport.src_port = 0xffff;
+	// actions.outer.l4_type_ext = DOCA_FLOW_L4_TYPE_EXT_TRANSPORT;
+	// actions.outer.transport.src_port = 0xffff;
 	actions_arr[0] = &actions;
 
 	result = doca_flow_pipe_cfg_create(&pipe_cfg, port);
