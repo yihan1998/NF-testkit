@@ -131,7 +131,7 @@ __dpa_rpc__ uint64_t flow_monitor_device_init(uint64_t data)
 	dev_ctx->dt_ctx.tx_buff_idx = 0;
 	dev_ctx->is_initalized = 1;
     dev_ctx->index=shared_data->thread_index;
-
+#if 0
 	struct flexio_dev_thread_ctx *dtctx;
 
 	/* Read the current thread context */
@@ -150,7 +150,7 @@ __dpa_rpc__ uint64_t flow_monitor_device_init(uint64_t data)
 		flexio_dev_print("Failed to acquire FlexIO window ptr\n");
 		return -1;
     }
-
+#endif
 	return 0;
 }
 
@@ -180,8 +180,8 @@ uint32_t flow_monitor(struct device_context *dev_ctx, char *out_data, char *in_d
     SET_MAC_ADDR(tmp,eth_hdr->h_source[0],eth_hdr->h_source[1],eth_hdr->h_source[2],eth_hdr->h_source[3],eth_hdr->h_source[4],eth_hdr->h_source[5]);
     SET_MAC_ADDR(eth_hdr->h_source,eth_hdr->h_dest[0],eth_hdr->h_dest[1],eth_hdr->h_dest[2],eth_hdr->h_dest[3],eth_hdr->h_dest[4],eth_hdr->h_dest[5]);
     SET_MAC_ADDR(eth_hdr->h_dest,tmp[0],tmp[1],tmp[2],tmp[3],tmp[4],tmp[5]);
-    int key=dev_ctx->index;
-    dev_ctx->host_buffer[key]=dev_ctx->host_buffer[key]+1;
+    // int key=dev_ctx->index;
+    // dev_ctx->host_buffer[key]=dev_ctx->host_buffer[key]+1;
 	return pkt_size;
 }
 
