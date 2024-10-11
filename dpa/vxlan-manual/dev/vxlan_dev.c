@@ -187,11 +187,11 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
     memcpy(sq_data + 50, rq_data, data_sz);
     memcpy(sq_data, rq_data, 42);
 
-    SET_MAC_ADDR(sq_data, rq_data[0], rq_data[1], rq_data[2], rq_data[3], rq_data[4], rq_data[5]);
-	SET_MAC_ADDR(sq_data + 6, rq_data[6], rq_data[7], rq_data[8], rq_data[9], rq_data[10], rq_data[11]);
+    SET_MAC_ADDR((uint8_t *)sq_data, rq_data[0], rq_data[1], rq_data[2], rq_data[3], rq_data[4], rq_data[5]);
+	SET_MAC_ADDR((uint8_t *)(sq_data + 6), rq_data[6], rq_data[7], rq_data[8], rq_data[9], rq_data[10], rq_data[11]);
 
-	*(uint32_t *)(out_data + 30) = htonl(0x08000000);
-    *(uint32_t *)(out_data + 34) = htonl(0x123456);
+	*(uint32_t *)(sq_data + 30) = htonl(0x08000000);
+    *(uint32_t *)(sq_data + 34) = htonl(0x123456);
 
 	/* Take first segment for SQ WQE (3 segments will be used) */
 	swqe = get_next_sqe(&dev_ctx->sq_ctx, SQ_IDX_MASK);
