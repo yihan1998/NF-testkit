@@ -45,7 +45,7 @@ struct dt_ctx_t {
 static struct device_context {
 	/* Packet count - used for debug message */
 	uint64_t packets_count;
-	uint32_t *host_buffer;
+	char *host_buffer;
 
     int index;
 	uint32_t lkey;				/* Local memory key */
@@ -110,15 +110,16 @@ static void step_cq(struct cq_ctx_t *cq_ctx, uint32_t cq_idx_mask)
 	flexio_dev_dbr_cq_set_ci(cq_ctx->cq_dbr, cq_ctx->cq_idx);
 }
 
-uint64_t vxlan_device_init(uint64_t data);
-flexio_dev_event_handler_t vxlan_device_event_handler; /* Event handler function */
+uint64_t flow_monitor_device_init(uint64_t data);
+flexio_dev_event_handler_t flow_monitor_device_event_handler; /* Event handler function */
 
 uint16_t htons(uint16_t hostshort);
 uint32_t htonl(uint32_t hostlong);
-uint32_t vxlan_encap(char *out_data, char *in_data, uint32_t in_data_size);
+uint32_t flow_monitor_encap(char *out_data, char *in_data, uint32_t in_data_size);
 
-__dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
+__dpa_rpc__ uint64_t flow_monitor_device_init(uint64_t data)
 {
+	flexio_status result;
 	struct host2dev_processor_data *shared_data = (struct host2dev_processor_data *)data;
 	struct device_context *dev_ctx = &dev_ctxs[shared_data->thread_index];
 	dev_ctx->lkey = shared_data->sq_data.wqd_mkey_id;
@@ -142,12 +143,22 @@ __dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
 		return;
 
     /* Acquire device pointer to host memory */
-	result = flexio_dev_window_ptr_acquire(dtctx, shared_data->haddr, (flexio_uintptr_t *)&host_buffer);
+	result = flexio_dev_window_ptr_acquire(dtctx, shared_data->haddr, (flexio_uintptr_t *)&dev_ctx->host_buffer);
 	if (result != FLEXIO_DEV_STATUS_SUCCESS)
 		return -1;
 
 	return 0;
 }
+
+#define SET_MAC_ADDR(addr, a, b, c, d, e, f)\
+do {\
+	addr[0] = a & 0xff;\
+	addr[1] = b & 0xff;\
+	addr[2] = c & 0xff;\
+	addr[3] = d & 0xff;\
+	addr[4] = e & 0xff;\
+	addr[5] = f & 0xff;\
+} while (0)
 
 struct ethhdr {
     uint8_t  h_dest[6];
@@ -230,7 +241,7 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
 	flexio_dev_dbr_rq_inc_pi(dev_ctx->rq_ctx.rq_dbr);
 }
 
-void __dpa_global__ vxlan_device_event_handler(uint64_t index)
+void __dpa_global__ flow_monitor_device_event_handler(uint64_t index)
 {
 	struct flexio_dev_thread_ctx *dtctx;
     struct device_context *dev_ctx = &dev_ctxs[index];
