@@ -261,12 +261,13 @@ void __dpa_global__ vxlan_device_event_handler(uint64_t index)
 	 */
 	while (flexio_dev_cqe_get_owner(dev_ctx->rq_cq_ctx.cqe) != dev_ctx->rq_cq_ctx.cq_hw_owner_bit) {
 		/* Print the message */
-		flexio_dev_print("Process packet: %ld\n", dev_ctx->packets_count++);
+		flexio_dev_print("Process packet: %ld, seen packet: %d\n", dev_ctx->packets_count++, *dev_ctx->host_buffer);
 		/* Update memory to DPA */
 		__dpa_thread_fence(__DPA_MEMORY, __DPA_R, __DPA_R);
 		/* Process the packet */
 		process_packet(dtctx, dev_ctx);
 		*dev_ctx->host_buffer = *dev_ctx->host_buffer + 1;
+		__dpa_thread_fence(__DPA_MEMORY, __DPA_W, __DPA_W);
 		/* Update RQ CQ */
 		step_cq(&dev_ctx->rq_cq_ctx, CQ_IDX_MASK);
 	}
