@@ -132,7 +132,7 @@ int setup_device(struct app_config *app_cfg)
 
     /* Create FlexIO Window */
 	result = flexio_window_create(app_cfg->flexio_process, app_cfg->pd, &app_cfg->flexio_window);
-	if (ret != FLEXIO_STATUS_SUCCESS) {
+	if (result != FLEXIO_STATUS_SUCCESS) {
 		printf("Failed to create FlexIO window\n");
 		return -1;
 	}
