@@ -139,13 +139,17 @@ __dpa_rpc__ uint64_t flow_monitor_device_init(uint64_t data)
 
     /* Configure FlexIO Window */
 	result = flexio_dev_window_config(dtctx, shared_data->window_id, shared_data->mkey);
-	if (result != FLEXIO_DEV_STATUS_SUCCESS)
+	if (result != FLEXIO_DEV_STATUS_SUCCESS) {
+		flexio_dev_print("Failed to configure FlexIO window\n");
 		return -1;
+    }
 
     /* Acquire device pointer to host memory */
 	result = flexio_dev_window_ptr_acquire(dtctx, shared_data->haddr, (flexio_uintptr_t *)&dev_ctx->host_buffer);
-	if (result != FLEXIO_DEV_STATUS_SUCCESS)
+	if (result != FLEXIO_DEV_STATUS_SUCCESS) {
+		flexio_dev_print("Failed to acquire FlexIO window ptr\n");
 		return -1;
+    }
 
 	return 0;
 }
@@ -253,7 +257,7 @@ void __dpa_global__ flow_monitor_device_event_handler(uint64_t index)
 	 */
 	while (flexio_dev_cqe_get_owner(dev_ctx->rq_cq_ctx.cqe) != dev_ctx->rq_cq_ctx.cq_hw_owner_bit) {
 		/* Print the message */
-		// flexio_dev_print("Process packet: %ld\n", dev_ctx->packets_count++);
+		flexio_dev_print("Process packet: %ld\n", dev_ctx->packets_count++);
 		/* Update memory to DPA */
 		__dpa_thread_fence(__DPA_MEMORY, __DPA_R, __DPA_R);
 		/* Process the packet */
