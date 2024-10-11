@@ -180,8 +180,10 @@ uint32_t flow_monitor(struct device_context *dev_ctx, char *out_data, char *in_d
     SET_MAC_ADDR(tmp,eth_hdr->h_source[0],eth_hdr->h_source[1],eth_hdr->h_source[2],eth_hdr->h_source[3],eth_hdr->h_source[4],eth_hdr->h_source[5]);
     SET_MAC_ADDR(eth_hdr->h_source,eth_hdr->h_dest[0],eth_hdr->h_dest[1],eth_hdr->h_dest[2],eth_hdr->h_dest[3],eth_hdr->h_dest[4],eth_hdr->h_dest[5]);
     SET_MAC_ADDR(eth_hdr->h_dest,tmp[0],tmp[1],tmp[2],tmp[3],tmp[4],tmp[5]);
-    // int key=dev_ctx->index;
-    // dev_ctx->host_buffer[key]=dev_ctx->host_buffer[key]+1;
+    if (0) {
+    int key=dev_ctx->index;
+    dev_ctx->host_buffer[key]=dev_ctx->host_buffer[key]+1;
+    }
 	return pkt_size;
 }
 
