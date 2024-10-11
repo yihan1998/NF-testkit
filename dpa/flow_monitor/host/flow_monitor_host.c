@@ -123,12 +123,12 @@ int setup_device(struct app_config *app_cfg)
 	event_handler_attr.host_stub_func = flow_monitor_device_event_handler;
 	struct flexio_process_attr process_attr = { 0 };
 
-	// /* Create FlexIO Process */
-	// result = flexio_process_create(app_cfg->ibv_ctx, DEV_APP_NAME, &process_attr, &app_cfg->flexio_process);
-	// if (result != FLEXIO_STATUS_SUCCESS) {
-	// 	printf("Could not create FlexIO process (%d)", result);
-	// 	return -1;
-	// }
+	/* Create FlexIO Process */
+	result = flexio_process_create(app_cfg->ibv_ctx, DEV_APP_NAME, &process_attr, &app_cfg->flexio_process);
+	if (result != FLEXIO_STATUS_SUCCESS) {
+		printf("Could not create FlexIO process (%d)", result);
+		return -1;
+	}
 
     // /* Create FlexIO Window */
 	// result = flexio_window_create(app_cfg->flexio_process, app_cfg->pd, &app_cfg->flexio_window);
