@@ -115,11 +115,11 @@ flexio_dev_event_handler_t flow_monitor_device_event_handler; /* Event handler f
 
 uint16_t htons(uint16_t hostshort);
 uint32_t htonl(uint32_t hostlong);
-uint32_t flow_monitor_encap(char *out_data, char *in_data, uint32_t in_data_size);
+uint32_t flow_monitor(struct device_context *dev_ctx, char *out_data, char *in_data, uint32_t in_data_size);
 
 __dpa_rpc__ uint64_t flow_monitor_device_init(uint64_t data)
 {
-	flexio_status result;
+	flexio_dev_status_t result;
 	struct host2dev_processor_data *shared_data = (struct host2dev_processor_data *)data;
 	struct device_context *dev_ctx = &dev_ctxs[shared_data->thread_index];
 	dev_ctx->lkey = shared_data->sq_data.wqd_mkey_id;
@@ -140,7 +140,7 @@ __dpa_rpc__ uint64_t flow_monitor_device_init(uint64_t data)
     /* Configure FlexIO Window */
 	result = flexio_dev_window_config(dtctx, shared_data->window_id, shared_data->mkey);
 	if (result != FLEXIO_DEV_STATUS_SUCCESS)
-		return;
+		return -1;
 
     /* Acquire device pointer to host memory */
 	result = flexio_dev_window_ptr_acquire(dtctx, shared_data->haddr, (flexio_uintptr_t *)&dev_ctx->host_buffer);
@@ -177,7 +177,7 @@ uint32_t flow_monitor(struct device_context *dev_ctx, char *out_data, char *in_d
     SET_MAC_ADDR(eth_hdr->h_source,eth_hdr->h_dest[0],eth_hdr->h_dest[1],eth_hdr->h_dest[2],eth_hdr->h_dest[3],eth_hdr->h_dest[4],eth_hdr->h_dest[5]);
     SET_MAC_ADDR(eth_hdr->h_dest,tmp[0],tmp[1],tmp[2],tmp[3],tmp[4],tmp[5]);
     int key=dev_ctx->index;
-    host_buffer[key]=host_buffer[key]+1;
+    dev_ctx->host_buffer[key]=dev_ctx->host_buffer[key]+1;
 	return pkt_size;
 }
 
