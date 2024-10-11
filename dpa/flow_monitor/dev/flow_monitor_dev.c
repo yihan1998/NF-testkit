@@ -170,16 +170,38 @@ struct ethhdr {
     uint16_t h_proto;
 };
 
+#define SWAP(a, b) \
+	do { \
+		__typeof__(a) tmp;  \
+		tmp = a;            \
+		a = b;              \
+		b = tmp;            \
+	} while (0)
+
+/* Swap source and destination MAC addresses in the packet.
+ *  packet - pointer to the packet.
+ */
+void swap_macs(char *packet)
+{
+	char *dmac, *smac;
+	int i;
+
+	dmac = packet;
+	smac = packet + 6;
+	for (i = 0; i < 6; i++, dmac++, smac++)
+		SWAP(*smac, *dmac);
+}
+
 /* Return size of packet */
 uint32_t flow_monitor(struct device_context *dev_ctx, char *out_data, char *in_data, uint32_t in_data_size)
 {
     uint32_t pkt_size=in_data_size;
     memcpy(out_data,in_data,in_data_size);
-    struct ethhdr *eth_hdr = (struct ethhdr *)in_data;
-    char tmp[6];
-    SET_MAC_ADDR(tmp,eth_hdr->h_source[0],eth_hdr->h_source[1],eth_hdr->h_source[2],eth_hdr->h_source[3],eth_hdr->h_source[4],eth_hdr->h_source[5]);
-    SET_MAC_ADDR(eth_hdr->h_source,eth_hdr->h_dest[0],eth_hdr->h_dest[1],eth_hdr->h_dest[2],eth_hdr->h_dest[3],eth_hdr->h_dest[4],eth_hdr->h_dest[5]);
-    SET_MAC_ADDR(eth_hdr->h_dest,tmp[0],tmp[1],tmp[2],tmp[3],tmp[4],tmp[5]);
+    // struct ethhdr *eth_hdr = (struct ethhdr *)in_data;
+    // char tmp[6];
+    // SET_MAC_ADDR(tmp,eth_hdr->h_source[0],eth_hdr->h_source[1],eth_hdr->h_source[2],eth_hdr->h_source[3],eth_hdr->h_source[4],eth_hdr->h_source[5]);
+    // SET_MAC_ADDR(eth_hdr->h_source,eth_hdr->h_dest[0],eth_hdr->h_dest[1],eth_hdr->h_dest[2],eth_hdr->h_dest[3],eth_hdr->h_dest[4],eth_hdr->h_dest[5]);
+    // SET_MAC_ADDR(eth_hdr->h_dest,tmp[0],tmp[1],tmp[2],tmp[3],tmp[4],tmp[5]);
     if (0) {
     int key=dev_ctx->index;
     dev_ctx->host_buffer[key]=dev_ctx->host_buffer[key]+1;
