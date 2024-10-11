@@ -158,7 +158,6 @@ int setup_device(struct app_config *app_cfg)
 	return 0;
 }
 
-#define HOST_BUFFER_SIZE    64
 #define MR_BASE_ALIGNMENT   64
 
 int allocate_device_resources(struct app_config *app_cfg)
