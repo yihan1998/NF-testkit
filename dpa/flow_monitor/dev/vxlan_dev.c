@@ -118,6 +118,7 @@ flexio_dev_event_handler_t vxlan_device_event_handler; /* Event handler function
 
 uint32_t htonl(uint32_t hostlong);
 void swap_macs(char *packet);
+uint32_t flow_monitor(char *out_data, char *in_data, uint32_t in_data_size, struct device_context *dev_ctx);
 
 __dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
 {
@@ -169,6 +170,11 @@ uint32_t htonl(uint32_t hostlong)
            ((hostlong >> 24) & 0x000000FF);
 }
 
+uint32_t flow_monitor(char *out_data, char *in_data, uint32_t in_data_size, struct device_context *dev_ctx) {
+	memcpy(out_data, in_data, in_data_size);
+	*dev_ctx->host_buffer = *dev_ctx->host_buffer + 1;
+}
+
 /* process packet - read it, swap MAC addresses, modify it, create a send WQE and send it back
  *  dtctx - pointer to context of the thread.
  */
@@ -203,16 +209,7 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
 	/* Take the next entry from the data ring */
 	sq_data = get_next_dte(&dev_ctx->dt_ctx, DATA_IDX_MASK, LOG_WQ_DATA_ENTRY_BSIZE);
 
-    // uint32_t sq_data_size = vxlan_encap(sq_data, rq_data, data_sz);
-	sq_data_size = data_sz + 50;
-    memcpy(sq_data + 50, rq_data, data_sz);
-    memcpy(sq_data, rq_data, 42);
-	swap_macs(sq_data);
-
-	*(uint32_t *)(sq_data + 30) = htonl(0x08000000);
-    *(uint32_t *)(sq_data + 34) = htonl(0x123456);
-
-	*dev_ctx->host_buffer = *dev_ctx->host_buffer + 1;
+    uint32_t sq_data_size = flow_monitor(sq_data, rq_data, data_sz, dev_ctx);
 
 	/* Take first segment for SQ WQE (3 segments will be used) */
 	swqe = get_next_sqe(&dev_ctx->sq_ctx, SQ_IDX_MASK);
