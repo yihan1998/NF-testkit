@@ -785,7 +785,8 @@ int main(int argc, char ** argv)
         // flexio_msg_stream_flush(default_stream);
 		sleep(1);
 		run_dpdk_loop();
-		for (int i = 0; i < MAX_NB_THREAD; i++) {
+		printf(" [FLOW MONITOR] statistics: \n");
+		for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
             printf("%d ", app_cfg.host_buffer[i]);
             if (i % 16 == 15) {
                 printf("\n");
