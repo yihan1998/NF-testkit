@@ -47,6 +47,10 @@ static struct device_context {
 	uint64_t packets_count;
 	int32_t *host_buffer;
 
+	uint32_t window_id;		/* FlexIO Window ID */
+	uint32_t mkey;			/* Memory key for the result matrix */
+	uint64_t haddr;			/* Host address for the result matrix */
+
 	uint32_t lkey;				/* Local memory key */
 	uint32_t is_initalized;		/* Initialization flag */
 	struct cq_ctx_t rq_cq_ctx;	/* RQ CQ */
@@ -109,14 +113,17 @@ static void step_cq(struct cq_ctx_t *cq_ctx, uint32_t cq_idx_mask)
 	flexio_dev_dbr_cq_set_ci(cq_ctx->cq_dbr, cq_ctx->cq_idx);
 }
 
+uint64_t vxlan_device_init(uint64_t data);
 flexio_dev_event_handler_t vxlan_device_event_handler; /* Event handler function */
 
 uint32_t htonl(uint32_t hostlong);
 void swap_macs(char *packet);
 
-static void vxlan_device_init(struct host2dev_processor_data * shared_data)
+__dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
 {
 	flexio_dev_print("Initializing device...\n");
+
+	struct host2dev_processor_data *shared_data = (struct host2dev_processor_data *)data;
 	struct device_context *dev_ctx = &dev_ctxs[shared_data->thread_index];
 	dev_ctx->lkey = shared_data->sq_data.wqd_mkey_id;
 	init_cq(shared_data->rq_cq_data, &dev_ctx->rq_cq_ctx);
@@ -125,30 +132,11 @@ static void vxlan_device_init(struct host2dev_processor_data * shared_data)
 	init_sq(shared_data->sq_data, &dev_ctx->sq_ctx);
 	dev_ctx->dt_ctx.sq_tx_buff = (void *)shared_data->sq_data.wqd_daddr;
 	dev_ctx->dt_ctx.tx_buff_idx = 0;
+	dev_ctx->window_id = shared_data->window_id;
+	dev_ctx->mkey = shared_data->mkey;
+	dev_ctx->haddr = shared_data->haddr;
 	dev_ctx->is_initalized = 1;
-
-	flexio_dev_status_t result;
-	struct flexio_dev_thread_ctx *dtctx;
-
-	/* Read the current thread context */
-	flexio_dev_get_thread_ctx(&dtctx);
-
-    /* Configure FlexIO Window */
-	result = flexio_dev_window_config(dtctx, shared_data->window_id, shared_data->mkey);
-	if (result != FLEXIO_DEV_STATUS_SUCCESS) {
-		flexio_dev_print("Failed to configure FlexIO window\n");
-		return;
-    }
-
-    /* Acquire device pointer to host memory */
-	result = flexio_dev_window_ptr_acquire(dtctx, shared_data->haddr, (flexio_uintptr_t *)&dev_ctx->host_buffer);
-	if (result != FLEXIO_DEV_STATUS_SUCCESS) {
-		flexio_dev_print("Failed to acquire FlexIO window ptr\n");
-		return;
-    }
-
-	flexio_dev_print("Init packet count %d(%p)\n", *dev_ctx->host_buffer, (void *)dev_ctx->host_buffer);
-	return;
+	return 0;
 }
 
 #define SWAP(a, b) \
@@ -249,19 +237,30 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
 	flexio_dev_dbr_rq_inc_pi(dev_ctx->rq_ctx.rq_dbr);
 }
 
-// void __dpa_global__ vxlan_device_event_handler(uint64_t index)
-void __dpa_global__ vxlan_device_event_handler(uint64_t thread_arg)
+void __dpa_global__ vxlan_device_event_handler(uint64_t index)
 {
-	struct host2dev_processor_data *data_from_host = (struct host2dev_processor_data *)thread_arg;
-	struct device_context *dev_ctx = &dev_ctxs[data_from_host->thread_index];
 	struct flexio_dev_thread_ctx *dtctx;
+    struct device_context *dev_ctx = &dev_ctxs[index];
+	flexio_dev_status_t result;
 
-	if (!data_from_host->not_first_run) {
-		flexio_dev_print("Initialize ctx %d => ", data_from_host->thread_index);
-		vxlan_device_init(data_from_host);
-		data_from_host->not_first_run = 1;
-		flexio_dev_print("[DONE]\n");
-	}
+	/* Read the current thread context */
+	flexio_dev_get_thread_ctx(&dtctx);
+
+    /* Configure FlexIO Window */
+	result = flexio_dev_window_config(dtctx, dev_ctx->window_id, dev_ctx->mkey);
+	if (result != FLEXIO_DEV_STATUS_SUCCESS) {
+		flexio_dev_print("Failed to configure FlexIO window\n");
+		return -1;
+    }
+
+    /* Acquire device pointer to host memory */
+	result = flexio_dev_window_ptr_acquire(dtctx, dev_ctx->haddr, (flexio_uintptr_t *)&dev_ctx->host_buffer);
+	if (result != FLEXIO_DEV_STATUS_SUCCESS) {
+		flexio_dev_print("Failed to acquire FlexIO window ptr\n");
+		return -1;
+    }
+
+	flexio_dev_print("Init packet count %lu(%p)\n", *dev_ctx->host_buffer, dev_ctx->host_buffer);
 
 	// struct flexio_dev_thread_ctx *dtctx;
     // struct device_context *dev_ctx = &dev_ctxs[index];
@@ -273,7 +272,7 @@ void __dpa_global__ vxlan_device_event_handler(uint64_t thread_arg)
 	 */
 	while (flexio_dev_cqe_get_owner(dev_ctx->rq_cq_ctx.cqe) != dev_ctx->rq_cq_ctx.cq_hw_owner_bit) {
 		/* Print the message */
-		flexio_dev_print("Process packet: %ld, seen packet: %d(%p)\n", dev_ctx->packets_count++, *dev_ctx->host_buffer, (void *)dev_ctx->host_buffer);
+		flexio_dev_print("Process packet: %ld, seen packet: %lu(%p)\n", dev_ctx->packets_count++, *dev_ctx->host_buffer, dev_ctx->host_buffer);
 		/* Update memory to DPA */
 		__dpa_thread_fence(__DPA_MEMORY, __DPA_R, __DPA_R);
 		/* Process the packet */

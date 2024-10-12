@@ -48,7 +48,6 @@ struct host2dev_processor_data {
 	uint32_t window_id;		/* FlexIO Window ID */
 	uint32_t mkey;			/* Memory key for the result matrix */
 	uint64_t haddr;			/* Host address for the result matrix */
-	uint8_t not_first_run;
 } __attribute__((__packed__, aligned(8)));
 
 struct mlx5_ifc_dr_match_spec_bits {
