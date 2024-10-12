@@ -257,8 +257,10 @@ void __dpa_global__ vxlan_device_event_handler(uint64_t thread_arg)
 	struct flexio_dev_thread_ctx *dtctx;
 
 	if (!data_from_host->not_first_run) {
+		flexio_dev_print("Initialize ctx %d => ", data_from_host->thread_index);
 		vxlan_device_init(data_from_host);
 		data_from_host->not_first_run = 1;
+		flexio_dev_print("[DONE]\n");
 	}
 
 	// struct flexio_dev_thread_ctx *dtctx;
