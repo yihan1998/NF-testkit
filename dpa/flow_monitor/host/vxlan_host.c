@@ -184,7 +184,7 @@ int allocate_device_resources(struct app_config *app_cfg)
 	}
 	memset(app_cfg->host_buffer, 0, mat_bsize);
 
-	app_cfg->mr = ibv_reg_mr(app_cfg->pd, app_cfg->host_buffer, mat_bsize, IBV_ACCESS_LOCAL_WRITE);
+	app_cfg->mr = ibv_reg_mr(app_cfg->pd, app_cfg->host_buffer, mat_bsize, IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ);
 	if (app_cfg->mr == NULL) {
 		printf("Failed to register MR\n");
 		return -1;
