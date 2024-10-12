@@ -209,7 +209,7 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
 	/* Take the next entry from the data ring */
 	sq_data = get_next_dte(&dev_ctx->dt_ctx, DATA_IDX_MASK, LOG_WQ_DATA_ENTRY_BSIZE);
 
-    uint32_t sq_data_size = flow_monitor(sq_data, rq_data, data_sz, dev_ctx);
+    sq_data_size = flow_monitor(sq_data, rq_data, data_sz, dev_ctx);
 
 	/* Take first segment for SQ WQE (3 segments will be used) */
 	swqe = get_next_sqe(&dev_ctx->sq_ctx, SQ_IDX_MASK);
