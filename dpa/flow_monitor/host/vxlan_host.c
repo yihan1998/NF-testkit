@@ -786,7 +786,7 @@ int main(int argc, char ** argv)
 		sleep(1);
 		run_dpdk_loop();
 		printf(" [FLOW MONITOR] statistics: \n");
-		for (int i = 0; i < app_cfg->nb_dpa_threads; i++) {
+		for (int i = 0; i < app_cfg.nb_dpa_threads; i++) {
             printf("%d ", app_cfg.host_buffer[i]);
             if (i % 16 == 15) {
                 printf("\n");
