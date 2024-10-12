@@ -1,4 +1,4 @@
-sample_dev_srcs =  ['flow_monitor_dev.c']
+sample_dev_srcs =  ['vxlan_dev.c']
 app_out_name = dev_app_name + '.a'
 
 build_dpacc = find_program('/opt/mellanox/flexio/samples/doca_build_dpacc.sh', required: true)

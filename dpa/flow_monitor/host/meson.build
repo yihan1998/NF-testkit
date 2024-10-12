@@ -28,7 +28,7 @@
 #
 
 srcs = [
-    'flow_monitor_host.c',
+    'vxlan_host.c',
 	'queue.c',
 	'dpdk.c',
 ]
@@ -36,7 +36,7 @@ srcs = [
 inc = include_directories('..')
 
 # Build sample as executable application
-executable('flow_monitor',
+executable('vxlan',
 	srcs,
 	c_args: '-DDEV_APP_NAME='+dev_app_name,
 	native: true,
