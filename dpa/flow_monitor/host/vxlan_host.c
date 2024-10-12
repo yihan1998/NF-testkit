@@ -744,7 +744,7 @@ int main(int argc, char ** argv)
 	if (result < 0)
 		goto device_cleanup;
 
-	print_init(&app_cfg);
+	// print_init(&app_cfg);
 
 	/* Run init function on device */
 	printf("Run init function on device...\n");
@@ -782,15 +782,15 @@ int main(int argc, char ** argv)
 	/* Add an additional new line for output readability */
 	printf("Press Ctrl+C to terminate\n");
 	while (!force_quit) {
-        flexio_msg_stream_flush(default_stream);
+        // flexio_msg_stream_flush(default_stream);
 		sleep(1);
 		run_dpdk_loop();
-		// for (int i = 0; i < MAX_NB_THREAD; i++) {
-        //     printf("%d ", app_cfg.host_buffer[i]);
-        //     if (i % 16 == 15) {
-        //         printf("\n");
-        //     }
-        // }
+		for (int i = 0; i < MAX_NB_THREAD; i++) {
+            printf("%d ", app_cfg.host_buffer[i]);
+            if (i % 16 == 15) {
+                printf("\n");
+            }
+        }
 	}
 
 	vxlan_destroy(&app_cfg);

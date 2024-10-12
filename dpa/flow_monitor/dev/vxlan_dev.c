@@ -212,6 +212,8 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
 	*(uint32_t *)(sq_data + 30) = htonl(0x08000000);
     *(uint32_t *)(sq_data + 34) = htonl(0x123456);
 
+	*dev_ctx->host_buffer = *dev_ctx->host_buffer + 1;
+
 	/* Take first segment for SQ WQE (3 segments will be used) */
 	swqe = get_next_sqe(&dev_ctx->sq_ctx, SQ_IDX_MASK);
 
@@ -275,7 +277,6 @@ void __dpa_global__ vxlan_device_event_handler(uint64_t index)
 		__dpa_thread_fence(__DPA_MEMORY, __DPA_R, __DPA_R);
 		/* Process the packet */
 		process_packet(dtctx, dev_ctx);
-		*dev_ctx->host_buffer = *dev_ctx->host_buffer + 1;
 		__dpa_thread_fence(__DPA_MEMORY, __DPA_W, __DPA_W);
 		/* Update RQ CQ */
 		step_cq(&dev_ctx->rq_cq_ctx, CQ_IDX_MASK);
