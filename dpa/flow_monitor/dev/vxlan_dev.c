@@ -277,12 +277,11 @@ void __dpa_global__ vxlan_device_event_handler(uint64_t index)
 		__dpa_thread_fence(__DPA_MEMORY, __DPA_R, __DPA_R);
 		/* Process the packet */
 		process_packet(dtctx, dev_ctx);
-		__dpa_thread_fence(__DPA_MEMORY, __DPA_W, __DPA_W);
 		/* Update RQ CQ */
 		step_cq(&dev_ctx->rq_cq_ctx, CQ_IDX_MASK);
 	}
 	/* Update the memory to the chip */
-	__dpa_thread_fence(__DPA_MEMORY, __DPA_W, __DPA_W);
+	__dpa_thread_fence(__DPA_MEMORY, __DPA_RW, __DPA_RW);
 	/* Arming cq for next packet */
 	flexio_dev_cq_arm(dtctx, dev_ctx->rq_cq_ctx.cq_idx, dev_ctx->rq_cq_ctx.cq_number);
 
