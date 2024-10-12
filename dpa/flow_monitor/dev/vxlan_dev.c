@@ -171,8 +171,10 @@ uint32_t htonl(uint32_t hostlong)
 }
 
 uint32_t flow_monitor(char *out_data, char *in_data, uint32_t in_data_size, struct device_context *dev_ctx) {
+    uint32_t pkt_size=in_data_size;
 	memcpy(out_data, in_data, in_data_size);
 	*dev_ctx->host_buffer = *dev_ctx->host_buffer + 1;
+	return pkt_size;
 }
 
 /* process packet - read it, swap MAC addresses, modify it, create a send WQE and send it back
