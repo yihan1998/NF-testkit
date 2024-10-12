@@ -114,6 +114,44 @@ flexio_dev_event_handler_t vxlan_device_event_handler; /* Event handler function
 uint32_t htonl(uint32_t hostlong);
 void swap_macs(char *packet);
 
+static void vxlan_device_init(struct host2dev_processor_data * shared_data)
+{
+	flexio_dev_print("Initializing device...\n");
+	struct device_context *dev_ctx = &dev_ctxs[shared_data->thread_index];
+	dev_ctx->lkey = shared_data->sq_data.wqd_mkey_id;
+	init_cq(shared_data->rq_cq_data, &dev_ctx->rq_cq_ctx);
+	init_rq(shared_data->rq_data, &dev_ctx->rq_ctx);
+	init_cq(shared_data->sq_cq_data, &dev_ctx->sq_cq_ctx);
+	init_sq(shared_data->sq_data, &dev_ctx->sq_ctx);
+	dev_ctx->dt_ctx.sq_tx_buff = (void *)shared_data->sq_data.wqd_daddr;
+	dev_ctx->dt_ctx.tx_buff_idx = 0;
+	dev_ctx->is_initalized = 1;
+
+	flexio_dev_status_t result;
+	struct flexio_dev_thread_ctx *dtctx;
+
+	/* Read the current thread context */
+	flexio_dev_get_thread_ctx(&dtctx);
+
+    /* Configure FlexIO Window */
+	result = flexio_dev_window_config(dtctx, shared_data->window_id, shared_data->mkey);
+	if (result != FLEXIO_DEV_STATUS_SUCCESS) {
+		flexio_dev_print("Failed to configure FlexIO window\n");
+		return -1;
+    }
+
+    /* Acquire device pointer to host memory */
+	result = flexio_dev_window_ptr_acquire(dtctx, shared_data->haddr, (flexio_uintptr_t *)&dev_ctx->host_buffer);
+	if (result != FLEXIO_DEV_STATUS_SUCCESS) {
+		flexio_dev_print("Failed to acquire FlexIO window ptr\n");
+		return -1;
+    }
+
+	flexio_dev_print("Init packet count %lu(%p)\n", *dev_ctx->host_buffer, dev_ctx->host_buffer);
+
+	return 0;
+}
+
 #define SWAP(a, b) \
 	do { \
 		__typeof__(a) tmp;  \
