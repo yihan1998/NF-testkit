@@ -139,21 +139,27 @@ __dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
 	return 0;
 }
 
-struct ethhdr {
-    uint8_t  h_dest[6];
-    uint8_t  h_source[6];
-    uint16_t h_proto;
-};
+#define SWAP(a, b) \
+	do { \
+		__typeof__(a) tmp;  \
+		tmp = a;            \
+		a = b;              \
+		b = tmp;            \
+	} while (0)
 
-#define SET_MAC_ADDR(addr, a, b, c, d, e, f)\
-do {\
-	addr[0] = a & 0xff;\
-	addr[1] = b & 0xff;\
-	addr[2] = c & 0xff;\
-	addr[3] = d & 0xff;\
-	addr[4] = e & 0xff;\
-	addr[5] = f & 0xff;\
-} while (0)
+/* Swap source and destination MAC addresses in the packet.
+ *  packet - pointer to the packet.
+ */
+void swap_macs(char *packet)
+{
+	char *dmac, *smac;
+	int i;
+
+	dmac = packet;
+	smac = packet + 6;
+	for (i = 0; i < 6; i++, dmac++, smac++)
+		SWAP(*smac, *dmac);
+}
 
 uint32_t htonl(uint32_t hostlong)
 {
@@ -161,18 +167,6 @@ uint32_t htonl(uint32_t hostlong)
            ((hostlong << 8) & 0x00FF0000) |
            ((hostlong >> 8) & 0x0000FF00) |
            ((hostlong >> 24) & 0x000000FF);
-}
-
-uint32_t flow_monitor(struct device_context *dev_ctx, char *out_data, char *in_data, uint32_t in_data_size) {
-    uint32_t pkt_size=in_data_size;
-	memcpy(out_data, in_data, in_data_size);
-    struct ethhdr *out_eth_hdr = (struct ethhdr *)out_data;
-	uint8_t temp[6];
-    SET_MAC_ADDR(temp,out_eth_hdr->h_source[0],out_eth_hdr->h_source[1],out_eth_hdr->h_source[2],out_eth_hdr->h_source[3],out_eth_hdr->h_source[4],out_eth_hdr->h_source[5]);
-    SET_MAC_ADDR(out_eth_hdr->h_source,out_eth_hdr->h_dest[0],out_eth_hdr->h_dest[1],out_eth_hdr->h_dest[2],out_eth_hdr->h_dest[3],out_eth_hdr->h_dest[4],out_eth_hdr->h_dest[5]);
-    SET_MAC_ADDR(out_eth_hdr->h_dest,temp[0],temp[1],temp[2],temp[3],temp[4],temp[5]);
-	*dev_ctx->host_buffer = *dev_ctx->host_buffer + 1;
-	return pkt_size;
 }
 
 /* process packet - read it, swap MAC addresses, modify it, create a send WQE and send it back
@@ -208,10 +202,9 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
 	/* Take the next entry from the data ring */
 	sq_data = get_next_dte(&dev_ctx->dt_ctx, DATA_IDX_MASK, LOG_WQ_DATA_ENTRY_BSIZE);
 
-	// memcpy(sq_data, rq_data, data_sz);
-	// swap_macs(sq_data);
-	// *dev_ctx->host_buffer = *dev_ctx->host_buffer + 1;
-    uint32_t sq_data_size = flow_monitor(dev_ctx,sq_data,rq_data,data_sz);
+	memcpy(sq_data, rq_data, data_sz);
+	swap_macs(sq_data);
+	*dev_ctx->host_buffer = *dev_ctx->host_buffer + 1;
 
 	/* Take first segment for SQ WQE (3 segments will be used) */
 	swqe = get_next_sqe(&dev_ctx->sq_ctx, SQ_IDX_MASK);
