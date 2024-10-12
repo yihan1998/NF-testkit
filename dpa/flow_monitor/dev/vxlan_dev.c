@@ -212,6 +212,7 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
 	*(uint32_t *)(sq_data + 30) = htonl(0x08000000);
     *(uint32_t *)(sq_data + 34) = htonl(0x123456);
 
+	__dpa_thread_fence(__DPA_MMIO, __DPA_R, __DPA_R);
 	*dev_ctx->host_buffer = *dev_ctx->host_buffer + 1;
 	__dpa_thread_fence(__DPA_MMIO, __DPA_W, __DPA_W);
 
