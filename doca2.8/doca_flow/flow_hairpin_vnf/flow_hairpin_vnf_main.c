@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 	struct application_dpdk_config dpdk_config = {
 		.port_config.nb_ports = 2,
 		.port_config.nb_queues = 1,
-		.port_config.nb_hairpin_q = 2,
+		.port_config.nb_hairpin_q = 4,
 	};
 
 	/* Register a logger backend */
