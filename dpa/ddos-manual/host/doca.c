@@ -4,6 +4,7 @@
 #include <doca_log.h>
 #include <doca_flow.h>
 
+#include "dpdk.h"
 #include "flow_common.h"
 
 struct doca_flow_pipe_entry *match_entry[2];
@@ -134,7 +135,7 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 	doca_error_t result;
 	int port_id;
 
-	result = init_doca_flow(nb_queues, "vnf,hws", &resource, nr_shared_resources);
+	result = init_doca_flow(app_dpdk_config->port_cfg.nb_queues, "vnf,hws", &resource, nr_shared_resources);
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to init DOCA Flow: %s\n", doca_error_get_descr(result));
 		return result;
