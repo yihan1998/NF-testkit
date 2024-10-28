@@ -37,14 +37,12 @@ srcs = [
 
 inc = include_directories('..')
 
-add_project_arguments('-D DOCA_ALLOW_EXPERIMENTAL_API', language: ['c', 'cpp'])
-
 # Build sample as executable application
 executable('ddos',
 	srcs,
 	c_args: '-DDEV_APP_NAME='+dev_app_name,
 	native: true,
         include_directories: inc,
-	dependencies: [flexio_dep, ibverbs_dep, mlx5_dep, dpdk_dep, doca_common_dep, sample_device_dep],
+	dependencies: [flexio_dep, ibverbs_dep, mlx5_dep, dpdk_dep, doca_common_dep, doca_flow_dep, sample_device_dep],
 	link_depends: sample_dev_target
 )
