@@ -242,6 +242,8 @@ doca_error_t init_doca_flow_ports_with_op_state(int nb_ports,
 	doca_error_t result;
 	enum doca_flow_port_operation_state state;
 
+	printf("[%s] nb ports: %d\n", __func__, nb_ports);
+
 	for (portid = 0; portid < nb_ports; portid++) {
 		state = states ? states[portid] : DOCA_FLOW_PORT_OPERATION_STATE_ACTIVE;
 		/* Create doca flow port */
