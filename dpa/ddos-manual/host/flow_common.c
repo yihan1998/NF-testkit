@@ -81,7 +81,7 @@ doca_error_t init_doca_flow_cb(int nb_queues,
 
 	result = doca_flow_cfg_create(&flow_cfg);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to create doca_flow_cfg: %s", doca_error_get_descr(result));
+		printf("Failed to create doca_flow_cfg: %s\n", doca_error_get_descr(result));
 		return result;
 	}
 
@@ -91,51 +91,51 @@ doca_error_t init_doca_flow_cb(int nb_queues,
 	rss.queues_array = rss_queues;
 	result = doca_flow_cfg_set_default_rss(flow_cfg, &rss);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_cfg rss: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_cfg rss: %s\n", doca_error_get_descr(result));
 		goto destroy_cfg;
 	}
 
 	result = doca_flow_cfg_set_pipe_queues(flow_cfg, nb_queues);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_cfg pipe_queues: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_cfg pipe_queues: %s\n", doca_error_get_descr(result));
 		goto destroy_cfg;
 	}
 
 	result = doca_flow_cfg_set_mode_args(flow_cfg, mode);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_cfg mode_args: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_cfg mode_args: %s\n", doca_error_get_descr(result));
 		goto destroy_cfg;
 	}
 
 	result = doca_flow_cfg_set_nr_counters(flow_cfg, resource->nr_counters);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_cfg nr_counters: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_cfg nr_counters: %s\n", doca_error_get_descr(result));
 		goto destroy_cfg;
 	}
 
 	result = doca_flow_cfg_set_nr_meters(flow_cfg, resource->nr_meters);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_cfg nr_meters: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_cfg nr_meters: %s\n", doca_error_get_descr(result));
 		goto destroy_cfg;
 	}
 
 	result = doca_flow_cfg_set_cb_entry_process(flow_cfg, cb);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_cfg doca_flow_entry_process_cb: %s",
+		printf("Failed to set doca_flow_cfg doca_flow_entry_process_cb: %s\n",
 			     doca_error_get_descr(result));
 		goto destroy_cfg;
 	}
 
 	result = doca_flow_cfg_set_cb_pipe_process(flow_cfg, pipe_process_cb);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_cfg pipe_process_cb: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_cfg pipe_process_cb: %s", doca_error_get_descr(result));
 		goto destroy_cfg;
 	}
 
 	for (int i = 0; i < SHARED_RESOURCE_NUM_VALUES; i++) {
 		result = doca_flow_cfg_set_nr_shared_resource(flow_cfg, nr_shared_resources[i], i);
 		if (result != DOCA_SUCCESS) {
-			DOCA_LOG_ERR("Failed to set doca_flow_cfg nr_shared_resources: %s",
+			printf("Failed to set doca_flow_cfg nr_shared_resources: %s\n",
 				     doca_error_get_descr(result));
 			goto destroy_cfg;
 		}
@@ -143,11 +143,11 @@ doca_error_t init_doca_flow_cb(int nb_queues,
 
 	result = doca_flow_init(flow_cfg);
 	if (result != DOCA_SUCCESS)
-		DOCA_LOG_ERR("Failed to initialize DOCA Flow: %s", doca_error_get_descr(result));
+		printf("Failed to initialize DOCA Flow: %s\n", doca_error_get_descr(result));
 destroy_cfg:
 	tmp_result = doca_flow_cfg_destroy(flow_cfg);
 	if (tmp_result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to destroy doca_flow_cfg: %s", doca_error_get_descr(tmp_result));
+		printf("Failed to destroy doca_flow_cfg: %s\n", doca_error_get_descr(tmp_result));
 		DOCA_ERROR_PROPAGATE(result, tmp_result);
 	}
 
@@ -175,39 +175,39 @@ static doca_error_t create_doca_flow_port(int port_id,
 
 	result = doca_flow_port_cfg_create(&port_cfg);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to create doca_flow_port_cfg: %s", doca_error_get_descr(result));
+		printf("Failed to create doca_flow_port_cfg: %s\n", doca_error_get_descr(result));
 		return result;
 	}
 
 	result = doca_flow_port_cfg_set_dev(port_cfg, dev);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_port_cfg dev: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_port_cfg dev: %s\n", doca_error_get_descr(result));
 		goto destroy_port_cfg;
 	}
 
 	snprintf(port_id_str, max_port_str_len, "%d", port_id);
 	result = doca_flow_port_cfg_set_devargs(port_cfg, port_id_str);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_port_cfg devargs: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_port_cfg devargs: %s\n", doca_error_get_descr(result));
 		goto destroy_port_cfg;
 	}
 
 	result = doca_flow_port_cfg_set_operation_state(port_cfg, state);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_port_cfg operation state: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_port_cfg operation state: %s\n", doca_error_get_descr(result));
 		goto destroy_port_cfg;
 	}
 
 	result = doca_flow_port_start(port_cfg, port);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to start doca_flow port: %s", doca_error_get_descr(result));
+		printf("Failed to start doca_flow port: %s\n", doca_error_get_descr(result));
 		goto destroy_port_cfg;
 	}
 
 destroy_port_cfg:
 	tmp_result = doca_flow_port_cfg_destroy(port_cfg);
 	if (tmp_result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to destroy doca_flow port: %s", doca_error_get_descr(tmp_result));
+		printf("Failed to destroy doca_flow port: %s\n", doca_error_get_descr(tmp_result));
 		DOCA_ERROR_PROPAGATE(result, tmp_result);
 	}
 
@@ -249,7 +249,7 @@ doca_error_t init_doca_flow_ports_with_op_state(int nb_ports,
 		/* Create doca flow port */
 		result = create_doca_flow_port(portid, dev_arr[portid], state, &ports[portid]);
 		if (result != DOCA_SUCCESS) {
-			DOCA_LOG_ERR("Failed to start port: %s", doca_error_get_descr(result));
+			printf("Failed to start port: %s\n", doca_error_get_descr(result));
 			if (portid != 0)
 				stop_doca_flow_ports(portid, ports);
 			return result;
@@ -260,7 +260,7 @@ doca_error_t init_doca_flow_ports_with_op_state(int nb_ports,
 		/* pair odd port with previous port */
 		result = doca_flow_port_pair(ports[portid], ports[portid ^ 1]);
 		if (result != DOCA_SUCCESS) {
-			DOCA_LOG_ERR("Failed to pair ports %u - %u", portid, portid ^ 1);
+			printf("Failed to pair ports %u - %u\n", portid, portid ^ 1);
 			stop_doca_flow_ports(portid + 1, ports);
 			return result;
 		}
@@ -284,25 +284,25 @@ doca_error_t set_flow_pipe_cfg(struct doca_flow_pipe_cfg *cfg,
 	doca_error_t result;
 
 	if (cfg == NULL) {
-		DOCA_LOG_ERR("Failed to set DOCA Flow pipe configurations, cfg=NULL");
+		printf("Failed to set DOCA Flow pipe configurations, cfg=NULL\n");
 		return DOCA_ERROR_INVALID_VALUE;
 	}
 
 	result = doca_flow_pipe_cfg_set_name(cfg, name);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_pipe_cfg name: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_pipe_cfg name: %s\n", doca_error_get_descr(result));
 		return result;
 	}
 
 	result = doca_flow_pipe_cfg_set_type(cfg, type);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_pipe_cfg type: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_pipe_cfg type: %s\n", doca_error_get_descr(result));
 		return result;
 	}
 
 	result = doca_flow_pipe_cfg_set_is_root(cfg, is_root);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_pipe_cfg is_root: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_pipe_cfg is_root: %s\n", doca_error_get_descr(result));
 		return result;
 	}
 
@@ -315,17 +315,17 @@ doca_error_t flow_process_entries(struct doca_flow_port *port, struct entries_st
 
 	result = doca_flow_entries_process(port, 0, DEFAULT_TIMEOUT_US, nr_entries);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to process %u entries: %s", nr_entries, doca_error_get_descr(result));
+		printf("Failed to process %u entries: %s", nr_entries, doca_error_get_descr(result));
 		return result;
 	}
 
 	if (status->nb_processed != (int)nr_entries) {
-		DOCA_LOG_ERR("Failed to process %u entries, nb_processed=%d", nr_entries, status->nb_processed);
+		printf("Failed to process %u entries, nb_processed=%d\n", nr_entries, status->nb_processed);
 		return DOCA_ERROR_BAD_STATE;
 	}
 
 	if (status->failure) {
-		DOCA_LOG_ERR("Failed to process %u entries, status is failure", nr_entries);
+		printf("Failed to process %u entries, status is failure\n", nr_entries);
 		return DOCA_ERROR_BAD_STATE;
 	}
 
