@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <errno.h>
 
+#include <doca_log.h>
+
 #include "dpdk.h"
 
 #define USEC_PER_SEC    1000000L
@@ -132,7 +134,7 @@ int dpdk_ports_init(struct application_dpdk_config *app_config) {
             result = setup_hairpin_queues(port, port, rss_queue_list, nb_hairpin_queues / 2);
             if (result != DOCA_SUCCESS) {
                 printf("Cannot hairpin self port %u, ret: %s\n",
-                        port, doca_get_error_string(result));
+                        port, doca_error_get_descr(result));
                 return result;
             }
             for (queue_index = 0; queue_index < nb_hairpin_queues / 2; queue_index++)
@@ -140,7 +142,7 @@ int dpdk_ports_init(struct application_dpdk_config *app_config) {
             result = setup_hairpin_queues(port, port ^ 1, rss_queue_list, nb_hairpin_queues / 2);
             if (result != DOCA_SUCCESS) {
                 printf("Cannot hairpin peer port %u, ret: %s\n",
-                        port ^ 1, doca_get_error_string(result));
+                        port ^ 1, doca_error_get_descr(result));
                 return result;
             }
         } else if (nb_hairpin_queues) {
@@ -195,6 +197,18 @@ int run_dpdk_loop(void) {
     return 0;
 }
 
+static void
+disable_hairpin_queues(uint16_t nb_ports)
+{
+	return;
+}
+
+static void
+dpdk_ports_fini(struct application_dpdk_config *app_dpdk_config, uint16_t nb_ports)
+{
+    return;
+}
+
 doca_error_t
 dpdk_queues_and_ports_init(struct application_dpdk_config *app_dpdk_config, int argc, char ** argv)
 {
@@ -225,7 +239,7 @@ dpdk_queues_and_ports_init(struct application_dpdk_config *app_dpdk_config, int 
 		result = dpdk_ports_init(app_dpdk_config);
 		if (result != DOCA_SUCCESS) {
 			printf("Ports allocation failed\n");
-			goto gpu_cleanup;
+			goto hairpin_queues_cleanup;
 		}
 	}
 

@@ -732,7 +732,7 @@ int main(int argc, char ** argv)
 
 	result = dpdk_queues_and_ports_init(&dpdk_config);
 	if (result != DOCA_SUCCESS) {
-		printf("Failed to update application ports and queues: %s\n", doca_get_error_string(result));
+		printf("Failed to update application ports and queues: %s\n", doca_error_get_descr(result));
 		return -1;
 	}
 
