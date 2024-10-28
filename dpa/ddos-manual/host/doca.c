@@ -86,6 +86,9 @@ destroy_pipe_cfg:
 
 static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id, uint32_t nb_rss_queues, struct doca_flow_pipe **pipe)
 {
+    struct doca_flow_match match;
+	struct doca_flow_actions actions, *actions_arr[NB_ACTIONS_ARR];
+	struct doca_flow_fwd fwd;
 	struct doca_flow_monitor counter;
 	struct doca_flow_pipe_cfg *pipe_cfg;
 	uint16_t rss_queues[MAX_RSS_QUEUES];
