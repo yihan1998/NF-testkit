@@ -259,6 +259,7 @@ doca_error_t init_doca_flow_ports_with_op_state(int nb_ports,
 		result = doca_flow_port_pair(ports[portid], ports[portid ^ 1]);
 		if (result != DOCA_SUCCESS) {
 			printf("Failed to pair ports %u - %u: %s\n", portid, portid ^ 1, doca_error_get_descr(result));
+			printf("Port 0: %p, port 1: %p\n", ports[portid], ports[portid ^ 1]);
 			stop_doca_flow_ports(portid + 1, ports);
 			return result;
 		}
