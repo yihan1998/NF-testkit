@@ -66,19 +66,19 @@ static doca_error_t create_classifier_pipe(struct doca_flow_port *port, int port
 
 	result = doca_flow_pipe_create(pipe_cfg, &fwd, NULL, pipe);
 	if (result != DOCA_SUCCESS) {
-		printf("Failed to create doca flow pipe, err: %s\n", doca_error_get_descr(result));
+		printf("[%s:%d] Failed to create doca flow pipe, err: %s\n", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
 	}
 
     result = doca_flow_pipe_add_entry(0, *pipe, &match, NULL, NULL, NULL, 0, NULL, NULL);
 	if (result != DOCA_SUCCESS) {
-		printf("Failed to create TCP flags filter pipe entry: %s\n", doca_error_get_descr(result));
+		printf("[%s:%d] Failed to create TCP flags filter pipe entry: %s\n", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
 	}
 
     result = doca_flow_entries_process(port, 0, DEFAULT_TIMEOUT_US, 0);
     if (result != DOCA_SUCCESS) {
-        printf("Failed to process entries: %s\n", doca_error_get_descr(result));
+        printf("[%s:%d] Failed to process entries: %s\n", __func__, __LINE__, doca_error_get_descr(result));
         doca_flow_destroy();
         return result;
     }
@@ -156,19 +156,19 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
 
 	result = doca_flow_pipe_create(pipe_cfg, &fwd, NULL, pipe);
 	if (result != DOCA_SUCCESS) {
-		printf("Failed to create doca flow pipe, err: %s\n", doca_error_get_descr(result));
+		printf("[%s:%d] Failed to create doca flow pipe, err: %s\n", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
 	}
 
     result = doca_flow_pipe_add_entry(0, *pipe, &match, NULL, NULL, NULL, 0, NULL, NULL);
 	if (result != DOCA_SUCCESS) {
-		printf("Failed to create TCP flags filter pipe entry: %s\n", doca_error_get_descr(result));
+		printf("[%s:%d] Failed to create TCP flags filter pipe entry: %s\n", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
 	}
 
     result = doca_flow_entries_process(port, 0, DEFAULT_TIMEOUT_US, 0);
     if (result != DOCA_SUCCESS) {
-        printf("Failed to process entries: %s\n", doca_error_get_descr(result));
+        printf("[%s:%d] Failed to process entries: %s\n", __func__, __LINE__, doca_error_get_descr(result));
         doca_flow_destroy();
         return result;
     }
