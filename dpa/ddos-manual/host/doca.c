@@ -27,7 +27,7 @@ static doca_error_t create_classifier_pipe(struct doca_flow_port *port, int port
 
 	/* 5 tuple match */
 	match.parser_meta.outer_l3_type = DOCA_FLOW_L3_META_IPV4;
-	match.outer.l3_type = DOCA_FLOW_L3_TYPE_IP4;
+	// match.outer.l3_type = DOCA_FLOW_L3_TYPE_IP4;
 	// match.outer.ip4.src_ip = 0xffffffff;
 	// match.outer.ip4.dst_ip = 0xffffffff;
 	match.outer.l4_type_ext = DOCA_FLOW_L4_TYPE_EXT_TCP;
@@ -70,7 +70,7 @@ static doca_error_t create_classifier_pipe(struct doca_flow_port *port, int port
 		return result;
 	}
 
-    result = doca_flow_pipe_add_entry(0, *pipe, &match, NULL, NULL, NULL, 0, NULL, NULL);
+    result = doca_flow_pipe_add_entry(0, *pipe, &match, NULL, NULL, &fwd, 0, NULL, NULL);
 	if (result != DOCA_SUCCESS) {
 		printf("[%s:%d] Failed to create TCP flags filter pipe entry: %s\n", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
@@ -145,36 +145,20 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
 		goto destroy_pipe_cfg;
 	}
 
-    // for (int i = 0; i < nb_rss_queues; ++i) {
-	// 	rss_queues[i] = i + 1;
-    // }
+    for (int i = 0; i < nb_rss_queues; ++i) {
+		rss_queues[i] = i + 1;
+    }
 
-	// fwd.type = DOCA_FLOW_FWD_RSS;
-	// fwd.rss_queues = rss_queues;
-	// fwd.rss_outer_flags = DOCA_FLOW_RSS_IPV4 | DOCA_FLOW_RSS_TCP | DOCA_FLOW_RSS_UDP;
-	// fwd.num_of_queues = nb_rss_queues;
-
-	fwd.type = DOCA_FLOW_FWD_PORT;
-	fwd.port_id = port_id ^ 1;
+	fwd.type = DOCA_FLOW_FWD_RSS;
+	fwd.rss_queues = rss_queues;
+	fwd.rss_outer_flags = DOCA_FLOW_RSS_IPV4 | DOCA_FLOW_RSS_TCP | DOCA_FLOW_RSS_UDP;
+	fwd.num_of_queues = nb_rss_queues;
 
 	result = doca_flow_pipe_create(pipe_cfg, &fwd, NULL, pipe);
 	if (result != DOCA_SUCCESS) {
 		printf("[%s:%d] Failed to create doca flow pipe, err: %s\n", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
 	}
-
-    result = doca_flow_pipe_add_entry(0, *pipe, &match, NULL, NULL, &fwd, 0, NULL, NULL);
-	if (result != DOCA_SUCCESS) {
-		printf("[%s:%d] Failed to create TCP flags filter pipe entry: %s\n", __func__, __LINE__, doca_error_get_descr(result));
-		return result;
-	}
-
-    result = doca_flow_entries_process(port, 0, DEFAULT_TIMEOUT_US, 0);
-    if (result != DOCA_SUCCESS) {
-        printf("[%s:%d] Failed to process entries: %s\n", __func__, __LINE__, doca_error_get_descr(result));
-        doca_flow_destroy();
-        return result;
-    }
 
 destroy_pipe_cfg:
 	doca_flow_pipe_cfg_destroy(pipe_cfg);
