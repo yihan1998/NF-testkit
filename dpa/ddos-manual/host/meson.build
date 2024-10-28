@@ -37,6 +37,8 @@ srcs = [
 
 inc = include_directories('..')
 
+add_project_arguments('-D DOCA_ALLOW_EXPERIMENTAL_API', language: ['c', 'cpp'])
+
 # Build sample as executable application
 executable('ddos',
 	srcs,
