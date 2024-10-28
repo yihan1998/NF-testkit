@@ -146,7 +146,7 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
     printf("Initializing doca flow ports...\n");
 
 	memset(dev_arr, 0, sizeof(struct doca_dev *) * nb_ports);
-	result = init_doca_flow_ports(app_dpdk_config->port_config.nb_queues, ports, true, dev_arr);
+	result = init_doca_flow_ports(app_dpdk_config->port_config.nb_ports, ports, true, dev_arr);
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to init DOCA ports: %s\n", doca_error_get_descr(result));
 		doca_flow_destroy();
