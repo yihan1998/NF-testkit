@@ -148,7 +148,7 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
 	}
 
     for (int i = 0; i < nb_rss_queues; ++i) {
-		rss_queues[i] = i + 1;
+		rss_queues[i] = i;
     }
 
 	fwd.type = DOCA_FLOW_FWD_RSS;
