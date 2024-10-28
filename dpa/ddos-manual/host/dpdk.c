@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <errno.h>
 
-#include <doca_log.h>
-
 #include "dpdk.h"
 
 #define USEC_PER_SEC    1000000L
@@ -197,6 +195,29 @@ int run_dpdk_loop(void) {
     return 0;
 }
 
+static doca_error_t
+enable_hairpin_queues(uint8_t nb_ports)
+{
+	uint16_t port_id;
+	uint16_t n = 0;
+	doca_error_t result;
+
+	for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
+		if (!rte_eth_dev_is_valid_port(port_id))
+			/* the device ID  might not be contiguous */
+			continue;
+		result = bind_hairpin_queues(port_id);
+		if (result != DOCA_SUCCESS) {
+			printf("Hairpin bind failed on port=%u\n", port_id);
+			disable_hairpin_queues(port_id);
+			return result;
+		}
+		if (++n >= nb_ports)
+			break;
+	}
+	return DOCA_SUCCESS;
+}
+
 static void
 disable_hairpin_queues(uint16_t nb_ports)
 {
@@ -210,7 +231,7 @@ dpdk_ports_fini(struct application_dpdk_config *app_dpdk_config, uint16_t nb_por
 }
 
 doca_error_t
-dpdk_queues_and_ports_init(struct application_dpdk_config *app_dpdk_config, int argc, char ** argv)
+dpdk_queues_and_ports_init(struct application_dpdk_config *app_dpdk_config)
 {
 	doca_error_t result;
 	int ret = 0;

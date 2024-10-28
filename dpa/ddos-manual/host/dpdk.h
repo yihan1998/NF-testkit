@@ -15,6 +15,8 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 
+#include <doca_log.h>
+
 /* Port configuration */
 struct application_port_config {
 	int nb_ports;			   /* Set on init to 0 for don't care, required ports otherwise */
@@ -38,6 +40,7 @@ struct application_dpdk_config {
 						     */
 };
 
+doca_error_t dpdk_queues_and_ports_init(struct application_dpdk_config *app_dpdk_config);
 int config_ports(void);
 int run_dpdk_loop(void);
 

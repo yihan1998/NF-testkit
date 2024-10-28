@@ -723,7 +723,6 @@ int main(int argc, char ** argv)
 		.port_config.nb_ports = 2,
 		.port_config.nb_queues = 4,
 		.port_config.nb_hairpin_q = 4,
-		.sft_config = {0},
 		.reserve_main_thread = true,
 	};
 
