@@ -30,8 +30,6 @@
 
 #include "flow_common.h"
 
-DOCA_LOG_REGISTER(flow_common);
-
 /*
  * Entry processing callback
  *
