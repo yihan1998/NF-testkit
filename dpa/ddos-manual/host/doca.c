@@ -29,28 +29,28 @@ static doca_error_t create_match_pipe(struct doca_flow_port *port, int port_id, 
 
 	result = doca_flow_pipe_cfg_create(&pipe_cfg, port);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to create doca_flow_pipe_cfg: %s", doca_error_get_descr(result));
+		printf("Failed to create doca_flow_pipe_cfg: %s\n", doca_error_get_descr(result));
 		return result;
 	}
 
 	result = set_flow_pipe_cfg(pipe_cfg, "MATCH_PIPE", DOCA_FLOW_PIPE_BASIC, true);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_pipe_cfg: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_pipe_cfg: %s\n", doca_error_get_descr(result));
 		goto destroy_pipe_cfg;
 	}
 	result = doca_flow_pipe_cfg_set_match(pipe_cfg, &match, NULL);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_pipe_cfg match: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_pipe_cfg match: %s\n", doca_error_get_descr(result));
 		goto destroy_pipe_cfg;
 	}
 	result = doca_flow_pipe_cfg_set_actions(pipe_cfg, actions_arr, NULL, NULL, NB_ACTIONS_ARR);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_pipe_cfg monitor: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_pipe_cfg monitor: %s\n", doca_error_get_descr(result));
 		goto destroy_pipe_cfg;
 	}
 	result = doca_flow_pipe_cfg_set_monitor(pipe_cfg, &counter);
 	if (result != DOCA_SUCCESS) {
-		DOCA_LOG_ERR("Failed to set doca_flow_pipe_cfg counter: %s", doca_error_get_descr(result));
+		printf("Failed to set doca_flow_pipe_cfg counter: %s\n", doca_error_get_descr(result));
 		goto destroy_pipe_cfg;
 	}
 
