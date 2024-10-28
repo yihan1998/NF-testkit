@@ -84,7 +84,7 @@ setup_hairpin_queues(uint16_t port_id, uint16_t peer_port_id, uint16_t *reserved
 		result = rte_eth_tx_hairpin_queue_setup(port_id, reserved_hairpin_q_list[hairpin_q], nb_tx_rx_desc,
 						     &hairpin_conf);
 		if (result < 0) {
-			DOCA_LOG_ERR("Failed to setup hairpin queues (%s)", doca_error_get_descr(result));
+			printf("Failed to setup hairpin queues (%s)\n", doca_error_get_descr(result));
 			return DOCA_ERROR_DRIVER;
 		}
 
@@ -239,6 +239,92 @@ int run_dpdk_loop(void) {
         }
     }
     return 0;
+}
+
+/*
+ * Bind port to all the peer ports
+ *
+ * @port_id [in]: port ID
+ * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
+ */
+static doca_error_t
+bind_hairpin_queues(uint16_t port_id)
+{
+	/* Configure the Rx and Tx hairpin queues for the selected port */
+	int result = 0, peer_port, peer_ports_len;
+	uint16_t peer_ports[RTE_MAX_ETHPORTS];
+
+	/* bind current Tx to all peer Rx */
+	peer_ports_len = rte_eth_hairpin_get_peer_ports(port_id, peer_ports, RTE_MAX_ETHPORTS, 1);
+	if (peer_ports_len < 0) {
+		DOCA_LOG_ERR("Failed to get hairpin peer Rx ports of port %d, (%d)", port_id, peer_ports_len);
+		return DOCA_ERROR_DRIVER;
+	}
+	for (peer_port = 0; peer_port < peer_ports_len; peer_port++) {
+		result = rte_eth_hairpin_bind(port_id, peer_ports[peer_port]);
+		if (result < 0) {
+			DOCA_LOG_ERR("Failed to bind hairpin queues (%d)", result);
+			return DOCA_ERROR_DRIVER;
+		}
+	}
+	/* bind all peer Tx to current Rx */
+	peer_ports_len = rte_eth_hairpin_get_peer_ports(port_id, peer_ports, RTE_MAX_ETHPORTS, 0);
+	if (peer_ports_len < 0) {
+		DOCA_LOG_ERR("Failed to get hairpin peer Tx ports of port %d, (%d)", port_id, peer_ports_len);
+		return DOCA_ERROR_DRIVER;
+	}
+
+	for (peer_port = 0; peer_port < peer_ports_len; peer_port++) {
+		result = rte_eth_hairpin_bind(peer_ports[peer_port], port_id);
+		if (result < 0) {
+			DOCA_LOG_ERR("Failed to bind hairpin queues (%d)", result);
+			return DOCA_ERROR_DRIVER;
+		}
+	}
+	return DOCA_SUCCESS;
+}
+
+/*
+ * Unbind port from all its peer ports
+ *
+ * @port_id [in]: port ID
+ * @return: DOCA_SUCCESS on success and DOCA_ERROR otherwise
+ */
+static doca_error_t
+unbind_hairpin_queues(uint16_t port_id)
+{
+	/* Configure the Rx and Tx hairpin queues for the selected port */
+	int result = 0, peer_port, peer_ports_len;
+	uint16_t peer_ports[RTE_MAX_ETHPORTS];
+
+	/* unbind current Tx from all peer Rx */
+	peer_ports_len = rte_eth_hairpin_get_peer_ports(port_id, peer_ports, RTE_MAX_ETHPORTS, 1);
+	if (peer_ports_len < 0) {
+		printf("Failed to get hairpin peer Tx ports of port %d, (%d)\n", port_id, peer_ports_len);
+		return DOCA_ERROR_DRIVER;
+	}
+
+	for (peer_port = 0; peer_port < peer_ports_len; peer_port++) {
+		result = rte_eth_hairpin_unbind(port_id, peer_ports[peer_port]);
+		if (result < 0) {
+			printf("Failed to bind hairpin queues (%d)\n", result);
+			return DOCA_ERROR_DRIVER;
+		}
+	}
+	/* unbind all peer Tx from current Rx */
+	peer_ports_len = rte_eth_hairpin_get_peer_ports(port_id, peer_ports, RTE_MAX_ETHPORTS, 0);
+	if (peer_ports_len < 0) {
+		DOCA_LOG_ERR("Failed to get hairpin peer Tx ports of port %d, (%d)", port_id, peer_ports_len);
+		return DOCA_ERROR_DRIVER;
+	}
+	for (peer_port = 0; peer_port < peer_ports_len; peer_port++) {
+		result = rte_eth_hairpin_unbind(peer_ports[peer_port], port_id);
+		if (result < 0) {
+			printf("Failed to bind hairpin queues (%d)\n", result);
+			return DOCA_ERROR_DRIVER;
+		}
+	}
+	return DOCA_SUCCESS;
 }
 
 static doca_error_t

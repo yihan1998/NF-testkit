@@ -135,14 +135,14 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 	doca_error_t result;
 	int port_id;
 
-	result = init_doca_flow(app_dpdk_config->port_cfg.nb_queues, "vnf,hws", &resource, nr_shared_resources);
+	result = init_doca_flow(app_dpdk_config->port_config.nb_queues, "vnf,hws", &resource, nr_shared_resources);
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to init DOCA Flow: %s\n", doca_error_get_descr(result));
 		return result;
 	}
 
 	memset(dev_arr, 0, sizeof(struct doca_dev *) * nb_ports);
-	result = init_doca_flow_ports(app_dpdk_config->port_cfg.nb_queues, ports, true, dev_arr);
+	result = init_doca_flow_ports(app_dpdk_config->port_config.nb_queues, ports, true, dev_arr);
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to init DOCA ports: %s\n", doca_error_get_descr(result));
 		doca_flow_destroy();
