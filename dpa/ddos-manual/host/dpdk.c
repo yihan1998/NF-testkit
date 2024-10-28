@@ -58,7 +58,7 @@ struct rte_eth_conf port_conf = {
 /* Packet mempool for each core */
 struct rte_mempool * pkt_mempools[8];
 
-int config_ports(void) {
+int dpdk_ports_init(struct application_dpdk_config *app_config) {
     int ret;
     uint16_t portid;
     char name[RTE_MEMZONE_NAMESIZE];
@@ -79,6 +79,14 @@ int config_ports(void) {
             printf("MBUF pool %u: %p...\n", i, pkt_mempools[i]);
         }
     }
+
+    if (app_config->port_config.enable_mbuf_metadata || app_config->sft_config.enable) {
+		ret = rte_flow_dynf_metadata_register();
+		if (ret < 0) {
+			printf("Metadata register failed, ret=%d", ret);
+			return DOCA_ERROR_DRIVER;
+		}
+	}
 
     /* Initialise each port */
 	RTE_ETH_FOREACH_DEV(portid) {
@@ -114,6 +122,40 @@ int config_ports(void) {
 		/* >8 End of queue setup. */
 
 		fflush(stdout);
+
+        /* Enabled hairpin queue before port start */
+        if (nb_hairpin_queues && app_config->port_config.self_hairpin && rte_eth_dev_is_valid_port(port ^ 1)) {
+            /* Hairpin to both self and peer */
+            assert((nb_hairpin_queues % 2) == 0);
+            for (queue_index = 0; queue_index < nb_hairpin_queues / 2; queue_index++)
+                rss_queue_list[queue_index] = app_config->port_config.nb_queues + queue_index * 2;
+            result = setup_hairpin_queues(port, port, rss_queue_list, nb_hairpin_queues / 2);
+            if (result != DOCA_SUCCESS) {
+                printf("Cannot hairpin self port %u, ret: %s\n",
+                        port, doca_get_error_string(result));
+                return result;
+            }
+            for (queue_index = 0; queue_index < nb_hairpin_queues / 2; queue_index++)
+                rss_queue_list[queue_index] = app_config->port_config.nb_queues + queue_index * 2 + 1;
+            result = setup_hairpin_queues(port, port ^ 1, rss_queue_list, nb_hairpin_queues / 2);
+            if (result != DOCA_SUCCESS) {
+                printf("Cannot hairpin peer port %u, ret: %s\n",
+                        port ^ 1, doca_get_error_string(result));
+                return result;
+            }
+        } else if (nb_hairpin_queues) {
+            /* Hairpin to self or peer */
+            for (queue_index = 0; queue_index < nb_hairpin_queues; queue_index++)
+                rss_queue_list[queue_index] = app_config->port_config.nb_queues + queue_index;
+            if (rte_eth_dev_is_valid_port(port ^ 1))
+                result = setup_hairpin_queues(port, port ^ 1, rss_queue_list, nb_hairpin_queues);
+            else
+                result = setup_hairpin_queues(port, port, rss_queue_list, nb_hairpin_queues);
+            if (result != DOCA_SUCCESS) {
+                printf("Cannot hairpin port %u, ret=%d\n", port, result);
+                return result;
+            }
+        }
 
 		/* Start device */
 		ret = rte_eth_dev_start(portid);
@@ -151,4 +193,56 @@ int run_dpdk_loop(void) {
         }
     }
     return 0;
+}
+
+doca_error_t
+dpdk_queues_and_ports_init(struct application_dpdk_config *app_dpdk_config, int argc, char ** argv)
+{
+	doca_error_t result;
+	int ret = 0;
+
+	/* Check that DPDK enabled the required ports to send/receive on */
+	ret = rte_eth_dev_count_avail();
+	if (app_dpdk_config->port_config.nb_ports > 0 && ret < app_dpdk_config->port_config.nb_ports) {
+		printf("Application will only function with %u ports, num_of_ports=%d\n",
+			 app_dpdk_config->port_config.nb_ports, ret);
+		return DOCA_ERROR_DRIVER;
+	}
+
+	/* Check for available logical cores */
+	ret = rte_lcore_count();
+	if (app_dpdk_config->port_config.nb_queues > 0 && ret < app_dpdk_config->port_config.nb_queues) {
+		printf("At least %u cores are needed for the application to run, available_cores=%d\n",
+			 app_dpdk_config->port_config.nb_queues, ret);
+		return DOCA_ERROR_DRIVER;
+	}
+	app_dpdk_config->port_config.nb_queues = ret;
+
+	if (app_dpdk_config->reserve_main_thread)
+		app_dpdk_config->port_config.nb_queues -= 1;
+
+	if (app_dpdk_config->port_config.nb_ports > 0) {
+		result = dpdk_ports_init(app_dpdk_config);
+		if (result != DOCA_SUCCESS) {
+			printf("Ports allocation failed\n");
+			goto gpu_cleanup;
+		}
+	}
+
+	/* Enable hairpin queues */
+	if (app_dpdk_config->port_config.nb_hairpin_q > 0) {
+		fprintf(stderr, "Enable hairpin queues...\n");
+		result = enable_hairpin_queues(app_dpdk_config->port_config.nb_ports);
+		if (result != DOCA_SUCCESS)
+			goto ports_cleanup;
+	}
+
+	return DOCA_SUCCESS;
+
+hairpin_queues_cleanup:
+	disable_hairpin_queues(RTE_MAX_ETHPORTS);
+ports_cleanup:
+	dpdk_ports_fini(app_dpdk_config, RTE_MAX_ETHPORTS);
+
+	return result;
 }

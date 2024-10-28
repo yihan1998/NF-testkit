@@ -117,7 +117,7 @@ static doca_error_t add_match_pipe_entry(struct doca_flow_pipe *pipe,
 	return DOCA_SUCCESS;
 }
 
-doca_error_t doca_init(int nb_queues)
+doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 {
 	int nb_ports = 2;
 #ifdef ENABLE_COUNTER
@@ -141,7 +141,7 @@ doca_error_t doca_init(int nb_queues)
 	}
 
 	memset(dev_arr, 0, sizeof(struct doca_dev *) * nb_ports);
-	result = init_doca_flow_ports(nb_ports, ports, true, dev_arr);
+	result = init_doca_flow_ports(app_dpdk_config->port_cfg.nb_queues, ports, true, dev_arr);
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to init DOCA ports: %s\n", doca_error_get_descr(result));
 		doca_flow_destroy();

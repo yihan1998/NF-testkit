@@ -719,15 +719,25 @@ int main(int argc, char ** argv)
 		.device_name = "mlx5_0",
 		.nb_dpa_threads = 1,
 	};
+	struct application_dpdk_config dpdk_config = {
+		.port_config.nb_ports = 2,
+		.port_config.nb_queues = 4,
+		.port_config.nb_hairpin_q = 4,
+		.sft_config = {0},
+		.reserve_main_thread = true,
+	};
 
 	printf("Init DPDK...\n");
 	rte_eal_init(argc, argv);
 
-	printf("Config DPDK...\n");
-	config_ports();
+	result = dpdk_queues_and_ports_init(&dpdk_config);
+	if (result != DOCA_SUCCESS) {
+		printf("Failed to update application ports and queues: %s\n", doca_get_error_string(result));
+		return -1;
+	}
 
 	printf("init DOCA...\n");
-	result = doca_init(1);
+	result = doca_init(&dpdk_config);
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to init DOCA!\n");
 		return -1;

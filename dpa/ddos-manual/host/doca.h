@@ -3,6 +3,8 @@
 
 #include <doca_flow.h>
 
-doca_error_t doca_init(int nb_queues);
+#include "dpdk.h"
+
+doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config);
 
 #endif  /* _DOCA_H_ */
