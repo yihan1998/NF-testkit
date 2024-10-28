@@ -58,12 +58,58 @@ struct rte_eth_conf port_conf = {
 /* Packet mempool for each core */
 struct rte_mempool * pkt_mempools[8];
 
+static doca_error_t
+setup_hairpin_queues(uint16_t port_id, uint16_t peer_port_id, uint16_t *reserved_hairpin_q_list, int hairpin_queue_len)
+{
+	/* Port:
+	 *	0. RX queue
+	 *	1. RX hairpin queue rte_eth_rx_hairpin_queue_setup
+	 *	2. TX hairpin queue rte_eth_tx_hairpin_queue_setup
+	 */
+
+	int result = 0, hairpin_q;
+	uint16_t nb_tx_rx_desc = 2048;
+	uint32_t manual = 1;
+	uint32_t tx_exp = 1;
+	struct rte_eth_hairpin_conf hairpin_conf = {
+	    .peer_count = 1,
+	    .manual_bind = !!manual,
+	    .tx_explicit = !!tx_exp,
+	    .peers[0] = {peer_port_id, 0},
+	};
+
+	for (hairpin_q = 0; hairpin_q < hairpin_queue_len; hairpin_q++) {
+		// TX
+		hairpin_conf.peers[0].queue = reserved_hairpin_q_list[hairpin_q];
+		result = rte_eth_tx_hairpin_queue_setup(port_id, reserved_hairpin_q_list[hairpin_q], nb_tx_rx_desc,
+						     &hairpin_conf);
+		if (result < 0) {
+			DOCA_LOG_ERR("Failed to setup hairpin queues (%s)", doca_error_get_descr(result));
+			return DOCA_ERROR_DRIVER;
+		}
+
+		// RX
+		hairpin_conf.peers[0].queue = reserved_hairpin_q_list[hairpin_q];
+		result = rte_eth_rx_hairpin_queue_setup(port_id, reserved_hairpin_q_list[hairpin_q], nb_tx_rx_desc,
+						     &hairpin_conf);
+		if (result < 0) {
+			printf("Failed to setup hairpin queues (%s)\n", doca_error_get_descr(result));
+			return DOCA_ERROR_DRIVER;
+		}
+	}
+	return DOCA_SUCCESS;
+}
+
 int dpdk_ports_init(struct application_dpdk_config *app_config) {
     int ret;
+	doca_error_t result;
     uint16_t portid;
     char name[RTE_MEMZONE_NAMESIZE];
     uint16_t nb_rxd = DEFAULT_RX_DESC;
     uint16_t nb_txd = DEFAULT_TX_DESC;
+	const uint16_t nb_hairpin_queues = app_config->port_config.nb_hairpin_q;
+	uint16_t rss_queue_list[nb_hairpin_queues];
+	uint16_t queue_index;
 
     nb_cores = rte_lcore_count();
 
@@ -80,7 +126,7 @@ int dpdk_ports_init(struct application_dpdk_config *app_config) {
         }
     }
 
-    if (app_config->port_config.enable_mbuf_metadata || app_config->sft_config.enable) {
+    if (app_config->port_config.enable_mbuf_metadata) {
 		ret = rte_flow_dynf_metadata_register();
 		if (ret < 0) {
 			printf("Metadata register failed, ret=%d", ret);
@@ -124,35 +170,35 @@ int dpdk_ports_init(struct application_dpdk_config *app_config) {
 		fflush(stdout);
 
         /* Enabled hairpin queue before port start */
-        if (nb_hairpin_queues && app_config->port_config.self_hairpin && rte_eth_dev_is_valid_port(port ^ 1)) {
+        if (nb_hairpin_queues && app_config->port_config.self_hairpin && rte_eth_dev_is_valid_port(portid ^ 1)) {
             /* Hairpin to both self and peer */
             assert((nb_hairpin_queues % 2) == 0);
             for (queue_index = 0; queue_index < nb_hairpin_queues / 2; queue_index++)
                 rss_queue_list[queue_index] = app_config->port_config.nb_queues + queue_index * 2;
-            result = setup_hairpin_queues(port, port, rss_queue_list, nb_hairpin_queues / 2);
+            result = setup_hairpin_queues(portid, portid, rss_queue_list, nb_hairpin_queues / 2);
             if (result != DOCA_SUCCESS) {
                 printf("Cannot hairpin self port %u, ret: %s\n",
-                        port, doca_error_get_descr(result));
+                        portid, doca_error_get_descr(result));
                 return result;
             }
             for (queue_index = 0; queue_index < nb_hairpin_queues / 2; queue_index++)
                 rss_queue_list[queue_index] = app_config->port_config.nb_queues + queue_index * 2 + 1;
-            result = setup_hairpin_queues(port, port ^ 1, rss_queue_list, nb_hairpin_queues / 2);
+            result = setup_hairpin_queues(portid, portid ^ 1, rss_queue_list, nb_hairpin_queues / 2);
             if (result != DOCA_SUCCESS) {
                 printf("Cannot hairpin peer port %u, ret: %s\n",
-                        port ^ 1, doca_error_get_descr(result));
+                        portid ^ 1, doca_error_get_descr(result));
                 return result;
             }
         } else if (nb_hairpin_queues) {
             /* Hairpin to self or peer */
             for (queue_index = 0; queue_index < nb_hairpin_queues; queue_index++)
                 rss_queue_list[queue_index] = app_config->port_config.nb_queues + queue_index;
-            if (rte_eth_dev_is_valid_port(port ^ 1))
-                result = setup_hairpin_queues(port, port ^ 1, rss_queue_list, nb_hairpin_queues);
+            if (rte_eth_dev_is_valid_port(portid ^ 1))
+                result = setup_hairpin_queues(portid, portid ^ 1, rss_queue_list, nb_hairpin_queues);
             else
-                result = setup_hairpin_queues(port, port, rss_queue_list, nb_hairpin_queues);
+                result = setup_hairpin_queues(portid, portid, rss_queue_list, nb_hairpin_queues);
             if (result != DOCA_SUCCESS) {
-                printf("Cannot hairpin port %u, ret=%d\n", port, result);
+                printf("Cannot hairpin port %u, ret=%d\n", portid, result);
                 return result;
             }
         }
