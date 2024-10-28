@@ -221,11 +221,7 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 {
 	int nb_ports = app_dpdk_config->port_config.nb_ports;
     int nb_queues = app_dpdk_config->port_config.nb_queues;
-#ifdef ENABLE_COUNTER
 	struct flow_resources resource = {.nr_counters = 64};
-#else
-	struct flow_resources resource = {0};
-#endif	/* ENABLE_COUNTER */
 	uint32_t nr_shared_resources[SHARED_RESOURCE_NUM_VALUES] = {0};
 	struct doca_flow_port *ports[nb_ports];
 	struct doca_dev *dev_arr[nb_ports];
