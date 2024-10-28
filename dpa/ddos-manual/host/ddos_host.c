@@ -727,7 +727,7 @@ int main(int argc, char ** argv)
 	config_ports();
 
 	printf("init DOCA...\n");
-	result = doca_init(2);
+	result = doca_init(1);
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to init DOCA!\n");
 		return -1;
