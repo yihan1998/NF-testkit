@@ -124,7 +124,7 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
 		return result;
 	}
 
-	result = set_flow_pipe_cfg(pipe_cfg, "MATCH_PIPE", DOCA_FLOW_PIPE_BASIC, true);
+	result = set_flow_pipe_cfg(pipe_cfg, "MONITOR_PIPE", DOCA_FLOW_PIPE_BASIC, false);
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to set doca_flow_pipe_cfg: %s\n", doca_error_get_descr(result));
 		goto destroy_pipe_cfg;
