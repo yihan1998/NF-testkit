@@ -253,6 +253,8 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 	for (port_id = 0; port_id < nb_ports; port_id++) {
 		memset(&status_ingress, 0, sizeof(status_ingress));
 
+        printf("Creating monitor pipe on port %d...\n", port_id);
+
         result = create_monitor_pipe(ports[port_id], port_id, nb_queues, &monitor_pipe[port_id]);
 		if (result != DOCA_SUCCESS) {
 			printf("Failed to create monitor pipe: %s\n", doca_error_get_descr(result));
@@ -261,6 +263,8 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 			return result;
 		}
 
+        printf("Adding entry to monitor pipe on port %d...\n", port_id);
+
 		result = add_monitor_pipe_entry(classifier_pipe[port_id], &status_ingress, &match_entry[port_id]);
 		if (result != DOCA_SUCCESS) {
 			printf("Failed to add entry to classifier pipe: %s\n", doca_error_get_descr(result));
@@ -268,6 +272,8 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 			doca_flow_destroy();
 			return result;
 		}
+
+        printf("Creating classifier pipe on port %d...\n", port_id);
 
 		result = create_classifier_pipe(ports[port_id], port_id, &classifier_pipe[port_id]);
 		if (result != DOCA_SUCCESS) {
