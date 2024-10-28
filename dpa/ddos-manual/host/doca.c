@@ -7,6 +7,8 @@
 #include "dpdk.h"
 #include "flow_common.h"
 
+#define MAX_RSS_QUEUES  16
+
 struct doca_flow_pipe *classifier_pipe[2];
 struct doca_flow_pipe *monitor_pipe[2];
 struct doca_flow_pipe_entry *match_entry[2];
@@ -87,7 +89,7 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
 {
 	struct doca_flow_monitor counter;
 	struct doca_flow_pipe_cfg *pipe_cfg;
-	uint16_t rss_queue_list[nb_hairpin_queues];
+	uint16_t rss_queues[MAX_RSS_QUEUES];
 	doca_error_t result;
 
 	memset(&match, 0, sizeof(match));
@@ -137,7 +139,7 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
 		goto destroy_pipe_cfg;
 	}
 
-    for (i = 0; i < nb_rss_queues; ++i) {
+    for (int i = 0; i < nb_rss_queues; ++i) {
 		rss_queues[i] = i + 1;
     }
 
@@ -148,7 +150,7 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
 
 	result = doca_flow_pipe_create(pipe_cfg, &fwd, NULL, pipe);
 
-    result = doca_flow_pipe_add_entry(0, pipe, &match, NULL, NULL, NULL, 0, status, NULL);
+    result = doca_flow_pipe_add_entry(0, *pipe, &match, NULL, NULL, NULL, 0, NULL, NULL);
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to create TCP flags filter pipe entry: %s\n", doca_error_get_descr(result));
 		return result;
@@ -157,7 +159,6 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
     result = doca_flow_entries_process(port, 0, DEFAULT_TIMEOUT_US, 0);
     if (result != DOCA_SUCCESS) {
         printf("Failed to process entries: %s\n", doca_error_get_descr(result));
-        stop_doca_flow_ports(nb_ports, ports);
         doca_flow_destroy();
         return result;
     }
