@@ -19,11 +19,13 @@ static doca_error_t create_classifier_pipe(struct doca_flow_port *port, int port
 	struct doca_flow_actions actions, *actions_arr[NB_ACTIONS_ARR];
 	struct doca_flow_fwd fwd;
 	struct doca_flow_pipe_cfg *pipe_cfg;
+	struct entries_status status;
 	doca_error_t result;
 
 	memset(&match, 0, sizeof(match));
 	memset(&actions, 0, sizeof(actions));
 	memset(&fwd, 0, sizeof(fwd));
+	memset(&status, 0, sizeof(status));
 
 	/* 5 tuple match */
 	match.parser_meta.outer_l3_type = DOCA_FLOW_L3_META_IPV4;
@@ -70,7 +72,7 @@ static doca_error_t create_classifier_pipe(struct doca_flow_port *port, int port
 		return result;
 	}
 
-    result = doca_flow_pipe_add_entry(0, *pipe, &match, NULL, NULL, &fwd, 0, NULL, NULL);
+    result = doca_flow_pipe_add_entry(0, *pipe, &match, NULL, NULL, &fwd, 0, &status, NULL);
 	if (result != DOCA_SUCCESS) {
 		printf("[%s:%d] Failed to create TCP flags filter pipe entry: %s\n", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
