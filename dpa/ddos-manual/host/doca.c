@@ -6,6 +6,8 @@
 
 #include "flow_common.h"
 
+struct doca_flow_pipe_entry *match_entry[2];
+
 static doca_error_t create_match_pipe(struct doca_flow_port *port, int port_id, struct doca_flow_pipe **pipe)
 {
 	struct doca_flow_match match;
