@@ -107,6 +107,8 @@ int dpdk_ports_init(struct application_dpdk_config *app_config) {
     char name[RTE_MEMZONE_NAMESIZE];
     uint16_t nb_rxd = DEFAULT_RX_DESC;
     uint16_t nb_txd = DEFAULT_TX_DESC;
+    const uint16_t rx_rings = app_config->port_config.nb_queues;
+	const uint16_t tx_rings = app_config->port_config.nb_queues;
 	const uint16_t nb_hairpin_queues = app_config->port_config.nb_hairpin_q;
 	uint16_t rss_queue_list[nb_hairpin_queues];
 	uint16_t queue_index;
@@ -147,19 +149,21 @@ int dpdk_ports_init(struct application_dpdk_config *app_config) {
         }
 
 		/* Configure the number of queues for a port. */
-		ret = rte_eth_dev_configure(portid, nb_cores, nb_cores, &port_conf);
+		ret = rte_eth_dev_configure(portid, rx_rings + nb_hairpin_queues, tx_rings + nb_hairpin_queues, &port_conf);
 		if (ret < 0) {
 			rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n", ret, portid);
         }
 		/* >8 End of configuration of the number of queues for a port. */
 
-        for (int i = 0; i < nb_cores; i++) {
+        for (int i = 0; i < rx_rings; i++) {
             /* RX queue setup. 8< */
             ret = rte_eth_rx_queue_setup(portid, i, nb_rxd, rte_eth_dev_socket_id(portid), &rx_conf, pkt_mempools[i]);
             if (ret < 0) {
                 rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup:err=%d, port=%u\n", ret, portid);
             }
+        }
 
+        for (int i = 0; i < tx_rings; i++) {
             ret = rte_eth_tx_queue_setup(portid, i, nb_txd, rte_eth_dev_socket_id(portid), &tx_conf);
             if (ret < 0) {
                 rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup:err=%d, port=%u\n", ret, portid);
