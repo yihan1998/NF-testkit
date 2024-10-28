@@ -65,8 +65,12 @@ static doca_error_t create_classifier_pipe(struct doca_flow_port *port, int port
     fwd.next_pipe = monitor_pipe[port_id];
 
 	result = doca_flow_pipe_create(pipe_cfg, &fwd, NULL, pipe);
+	if (result != DOCA_SUCCESS) {
+		printf("Failed to create doca flow pipe, err: %s\n", doca_error_get_descr(result));
+		return result;
+	}
 
-    result = doca_flow_pipe_add_entry(0, pipe, &match, NULL, NULL, NULL, 0, NULL, NULL);
+    result = doca_flow_pipe_add_entry(0, *pipe, &match, NULL, NULL, NULL, 0, NULL, NULL);
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to create TCP flags filter pipe entry: %s\n", doca_error_get_descr(result));
 		return result;
@@ -151,6 +155,10 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
 	fwd.num_of_queues = nb_rss_queues;
 
 	result = doca_flow_pipe_create(pipe_cfg, &fwd, NULL, pipe);
+	if (result != DOCA_SUCCESS) {
+		printf("Failed to create doca flow pipe, err: %s\n", doca_error_get_descr(result));
+		return result;
+	}
 
     result = doca_flow_pipe_add_entry(0, *pipe, &match, NULL, NULL, NULL, 0, NULL, NULL);
 	if (result != DOCA_SUCCESS) {
