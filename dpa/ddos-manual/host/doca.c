@@ -145,14 +145,17 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
 		goto destroy_pipe_cfg;
 	}
 
-    for (int i = 0; i < nb_rss_queues; ++i) {
-		rss_queues[i] = i + 1;
-    }
+    // for (int i = 0; i < nb_rss_queues; ++i) {
+	// 	rss_queues[i] = i + 1;
+    // }
 
-	fwd.type = DOCA_FLOW_FWD_RSS;
-	fwd.rss_queues = rss_queues;
-	fwd.rss_outer_flags = DOCA_FLOW_RSS_IPV4 | DOCA_FLOW_RSS_TCP | DOCA_FLOW_RSS_UDP;
-	fwd.num_of_queues = nb_rss_queues;
+	// fwd.type = DOCA_FLOW_FWD_RSS;
+	// fwd.rss_queues = rss_queues;
+	// fwd.rss_outer_flags = DOCA_FLOW_RSS_IPV4 | DOCA_FLOW_RSS_TCP | DOCA_FLOW_RSS_UDP;
+	// fwd.num_of_queues = nb_rss_queues;
+
+	fwd.type = DOCA_FLOW_FWD_PORT;
+	fwd.port_id = port_id ^ 1;
 
 	result = doca_flow_pipe_create(pipe_cfg, &fwd, NULL, pipe);
 	if (result != DOCA_SUCCESS) {
@@ -184,6 +187,7 @@ static doca_error_t add_monitor_pipe_entry(struct doca_flow_pipe *pipe,
 {
 	struct doca_flow_match match;
 	struct doca_flow_actions actions;
+	struct doca_flow_monitor monitor;
 	// struct doca_flow_pipe_entry *entry;
 	doca_error_t result;
 
@@ -200,11 +204,13 @@ static doca_error_t add_monitor_pipe_entry(struct doca_flow_pipe *pipe,
 	match.outer.transport.dst_port = dst_port;
 	// match.outer.transport.src_port = src_port;
 
+	monitor.counter_type = DOCA_FLOW_RESOURCE_TYPE_NON_SHARED;
+
 	actions.meta.pkt_meta = 1;
 	// actions.outer.transport.src_port = rte_cpu_to_be_16(1235);
 	actions.action_idx = 0;
 
-	result = doca_flow_pipe_add_entry(0, pipe, &match, &actions, NULL, NULL, 0, status, entry);
+	result = doca_flow_pipe_add_entry(0, pipe, &match, &actions, &monitor, NULL, 0, status, entry);
 	if (result != DOCA_SUCCESS)
 		return result;
 
