@@ -120,7 +120,7 @@ static doca_error_t add_match_pipe_entry(struct doca_flow_pipe *pipe,
 
 doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 {
-	int nb_ports = 2;
+	int nb_ports = app_dpdk_config->port_config.nb_ports;
 #ifdef ENABLE_COUNTER
 	struct flow_resources resource = {.nr_counters = 64};
 #else
