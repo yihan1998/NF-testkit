@@ -251,7 +251,7 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 
         printf("Adding entry to monitor pipe on port %d...\n", port_id);
 
-		result = add_monitor_pipe_entry(classifier_pipe[port_id], &status_ingress, &match_entry[port_id]);
+		result = add_monitor_pipe_entry(monitor_pipe[port_id], &status_ingress, &match_entry[port_id]);
 		if (result != DOCA_SUCCESS) {
 			printf("Failed to add entry to classifier pipe: %s\n", doca_error_get_descr(result));
 			stop_doca_flow_ports(nb_ports, ports);
