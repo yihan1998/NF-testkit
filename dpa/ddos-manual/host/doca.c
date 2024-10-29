@@ -55,16 +55,9 @@ static doca_error_t add_classifier_pipe_entry(struct doca_flow_port *port, int p
 	fwd.next_pipe = monitor_pipe[port_id];
 
 	result = doca_flow_pipe_control_add_entry(0, priority, pipe,
-						  &match, NULL, NULL, NULL, NULL, NULL, 
-                          NULL, &fwd, status, NULL);
+                &match, NULL, NULL, NULL, NULL, NULL, NULL, &fwd, &status, NULL);
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to add control pipe entry: %s\n", doca_error_get_descr(result));
-		return result;
-	}
-
-    result = doca_flow_pipe_add_entry(0, pipe, &match, NULL, NULL, NULL, 0, &status, NULL);
-	if (result != DOCA_SUCCESS) {
-		printf("[%s:%d] Failed to create TCP flags filter pipe entry: %s\n", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
 	}
 
