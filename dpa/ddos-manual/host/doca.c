@@ -214,7 +214,7 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 		doca_flow_destroy();
 		return result;
 	}
-#if 0
+
     printf("Initializing each port...\n");
 
 	for (port_id = 0; port_id < nb_ports; port_id++) {
@@ -273,6 +273,6 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 			return DOCA_ERROR_BAD_STATE;
 		}
 	}
-#endif
+
 	return result;
 }
