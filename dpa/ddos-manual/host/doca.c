@@ -13,6 +13,70 @@ struct doca_flow_pipe *classifier_pipe[2];
 struct doca_flow_pipe *monitor_pipe[2];
 struct doca_flow_pipe_entry *match_entry[2];
 
+static doca_error_t create_classifier_pipe(struct doca_flow_port *port, struct doca_flow_pipe **pipe)
+{
+	struct doca_flow_pipe_cfg *pipe_cfg;
+	doca_error_t result;
+
+	result = doca_flow_pipe_cfg_create(&pipe_cfg, port);
+	if (result != DOCA_SUCCESS) {
+		printf("Failed to create doca_flow_pipe_cfg: %s\n", doca_error_get_descr(result));
+		return result;
+	}
+
+	result = set_flow_pipe_cfg(pipe_cfg, "CLASSIFIER_PIPE", DOCA_FLOW_PIPE_CONTROL, true);
+	if (result != DOCA_SUCCESS) {
+		printf("Failed to set doca_flow_pipe_cfg: %s\n", doca_error_get_descr(result));
+		goto destroy_pipe_cfg;
+	}
+
+	result = doca_flow_pipe_create(pipe_cfg, NULL, NULL, pipe);
+destroy_pipe_cfg:
+	doca_flow_pipe_cfg_destroy(pipe_cfg);
+	return result;
+}
+
+static doca_error_t add_classifier_pipe_entry(struct doca_flow_port *port, int port_id, struct doca_flow_pipe *pipe)
+{
+    struct doca_flow_match match;
+	struct doca_flow_fwd fwd;
+	uint8_t priority = 0;
+	doca_error_t result;
+
+	memset(&match, 0, sizeof(match));
+	memset(&fwd, 0, sizeof(fwd));
+
+	match.parser_meta.outer_l4_type = DOCA_FLOW_L4_META_TCP;
+	match.parser_meta.outer_l3_type = DOCA_FLOW_L3_META_IPV4;
+
+	fwd.type = DOCA_FLOW_FWD_PIPE;
+	fwd.next_pipe = monitor_pipe[port_id];
+
+	result = doca_flow_pipe_control_add_entry(0, priority, pipe,
+						  &match, NULL, NULL, NULL, NULL, NULL, 
+                          NULL, &fwd, status, NULL);
+	if (result != DOCA_SUCCESS) {
+		printf("Failed to add control pipe entry: %s\n", doca_error_get_descr(result));
+		return result;
+	}
+
+    result = doca_flow_pipe_add_entry(0, pipe, &match, &actions, NULL, NULL, 0, &status, NULL);
+	if (result != DOCA_SUCCESS) {
+		printf("[%s:%d] Failed to create TCP flags filter pipe entry: %s\n", __func__, __LINE__, doca_error_get_descr(result));
+		return result;
+	}
+
+    result = doca_flow_entries_process(port, 0, DEFAULT_TIMEOUT_US, 1);
+    if (result != DOCA_SUCCESS) {
+        printf("[%s:%d] Failed to process entries: %s\n", __func__, __LINE__, doca_error_get_descr(result));
+        doca_flow_destroy();
+        return result;
+    }
+
+	return DOCA_SUCCESS;
+}
+
+#if 0
 static doca_error_t create_classifier_pipe(struct doca_flow_port *port, int port_id, struct doca_flow_pipe **pipe)
 {
 	struct doca_flow_match match;
@@ -28,11 +92,12 @@ static doca_error_t create_classifier_pipe(struct doca_flow_port *port, int port
 	memset(&status, 0, sizeof(status));
 
 	/* 5 tuple match */
+	match.parser_meta.outer_l4_type = DOCA_FLOW_L4_META_TCP;
 	match.parser_meta.outer_l3_type = DOCA_FLOW_L3_META_IPV4;
 	// match.outer.l3_type = DOCA_FLOW_L3_TYPE_IP4;
 	// match.outer.ip4.src_ip = 0xffffffff;
 	// match.outer.ip4.dst_ip = 0xffffffff;
-	match.outer.l4_type_ext = DOCA_FLOW_L4_TYPE_EXT_TCP;
+	// match.outer.l4_type_ext = DOCA_FLOW_L4_TYPE_EXT_TCP;
 	// match.outer.transport.src_port = 0xffff;
 	// match.outer.transport.dst_port = 0xffff;
 
@@ -89,7 +154,7 @@ destroy_pipe_cfg:
 	doca_flow_pipe_cfg_destroy(pipe_cfg);
 	return result;
 }
-
+#endif
 static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id, uint32_t nb_rss_queues, struct doca_flow_pipe **pipe)
 {
     struct doca_flow_match match;
@@ -253,7 +318,7 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 
 		result = add_monitor_pipe_entry(monitor_pipe[port_id], &status_ingress, &match_entry[port_id]);
 		if (result != DOCA_SUCCESS) {
-			printf("Failed to add entry to classifier pipe: %s\n", doca_error_get_descr(result));
+			printf("Failed to add entry to monitor pipe: %s\n", doca_error_get_descr(result));
 			stop_doca_flow_ports(nb_ports, ports);
 			doca_flow_destroy();
 			return result;
@@ -264,6 +329,14 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 		result = create_classifier_pipe(ports[port_id], port_id, &classifier_pipe[port_id]);
 		if (result != DOCA_SUCCESS) {
 			printf("Failed to create classifier pipe: %s\n", doca_error_get_descr(result));
+			stop_doca_flow_ports(nb_ports, ports);
+			doca_flow_destroy();
+			return result;
+		}
+
+        result = add_classifier_pipe_entry(ports[port_id], port_id, classifier_pipe[port_id]);
+        if (result != DOCA_SUCCESS) {
+			printf("Failed to add entry to classifier pipe: %s\n", doca_error_get_descr(result));
 			stop_doca_flow_ports(nb_ports, ports);
 			doca_flow_destroy();
 			return result;
