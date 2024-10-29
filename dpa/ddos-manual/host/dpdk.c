@@ -114,6 +114,7 @@ int dpdk_ports_init(struct application_dpdk_config *app_config) {
 	uint16_t queue_index;
 
     nb_cores = rte_lcore_count();
+	printf("nr cores: %d, nr RX queues: %d, nr TX queues: %d\n", nb_cores, rx_rings, tx_rings);
 
     for (int i = 0; i < nb_cores; i++) {
         /* Create mbuf pool for each core */
