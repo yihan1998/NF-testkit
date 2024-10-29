@@ -232,6 +232,9 @@ int launch_one_lcore(void * args) {
 	int qid = lid;
 
 	while(!force_quit) {
+		if (lid == 0)
+			flexio_msg_stream_flush(default_stream);
+
 		RTE_ETH_FOREACH_DEV(portid) {
 			nb_rx = rte_eth_rx_burst(portid, qid, rx_pkts, DEFAULT_PKT_BURST);
 			if (nb_rx) {

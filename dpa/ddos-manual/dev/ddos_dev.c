@@ -113,13 +113,13 @@ static void step_cq(struct cq_ctx_t *cq_ctx, uint32_t cq_idx_mask)
 	flexio_dev_dbr_cq_set_ci(cq_ctx->cq_dbr, cq_ctx->cq_idx);
 }
 
-uint64_t vxlan_device_init(uint64_t data);
-flexio_dev_event_handler_t vxlan_device_event_handler; /* Event handler function */
+uint64_t ddos_device_init(uint64_t data);
+flexio_dev_event_handler_t ddos_device_event_handler; /* Event handler function */
 
 uint32_t htonl(uint32_t hostlong);
 void swap_macs(char *packet);
 
-__dpa_rpc__ uint64_t vxlan_device_init(uint64_t data)
+__dpa_rpc__ uint64_t ddos_device_init(uint64_t data)
 {
 	flexio_dev_print("Initializing device...\n");
 
@@ -208,8 +208,8 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
 	/* Take the next entry from the data ring */
 	sq_data = get_next_dte(&dev_ctx->dt_ctx, DATA_IDX_MASK, LOG_WQ_DATA_ENTRY_BSIZE);
 
-	// memcpy(sq_data, rq_data, data_sz);
-	// swap_macs(sq_data);
+	memcpy(sq_data, rq_data, data_sz);
+	swap_macs(sq_data);
 	// *dev_ctx->host_buffer = *dev_ctx->host_buffer + 1;
     uint32_t sq_data_size = flow_monitor(dev_ctx,sq_data,rq_data,data_sz);
 
@@ -238,7 +238,7 @@ static void process_packet(struct flexio_dev_thread_ctx *dtctx, struct device_co
 	flexio_dev_dbr_rq_inc_pi(dev_ctx->rq_ctx.rq_dbr);
 }
 
-void __dpa_global__ vxlan_device_event_handler(uint64_t index)
+void __dpa_global__ ddos_device_event_handler(uint64_t index)
 {
 	struct flexio_dev_thread_ctx *dtctx;
     struct device_context *dev_ctx = &dev_ctxs[index];
@@ -271,7 +271,7 @@ void __dpa_global__ vxlan_device_event_handler(uint64_t index)
 	 */
 	while (flexio_dev_cqe_get_owner(dev_ctx->rq_cq_ctx.cqe) != dev_ctx->rq_cq_ctx.cq_hw_owner_bit) {
 		/* Print the message */
-		// flexio_dev_print("Process packet: %ld, seen packet: %d(%p)\n", dev_ctx->packets_count++, *dev_ctx->host_buffer, (void *)dev_ctx->host_buffer);
+		flexio_dev_print("Process packet: %ld\n", dev_ctx->packets_count++);
 		/* Update memory to DPA */
 		__dpa_thread_fence(__DPA_MEMORY, __DPA_R, __DPA_R);
 		/* Process the packet */
