@@ -42,6 +42,6 @@ struct application_dpdk_config {
 
 doca_error_t dpdk_queues_and_ports_init(struct application_dpdk_config *app_dpdk_config);
 int config_ports(void);
-int launch_one_lcore(void);
+int launch_one_lcore(void * args);
 
 #endif  /* _DPDK_H_ */
