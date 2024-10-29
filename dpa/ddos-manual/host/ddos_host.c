@@ -735,13 +735,6 @@ int main(int argc, char ** argv)
 		return -1;
 	}
 
-	printf("init DOCA...\n");
-	result = doca_init(&dpdk_config);
-	if (result != DOCA_SUCCESS) {
-		printf("Failed to init DOCA!\n");
-		return -1;
-	}
-
 	printf("Open IB device and allocate PD...\n");
     result = setup_ibv_device(&app_cfg);
 	if (result < 0) {
@@ -791,6 +784,13 @@ int main(int argc, char ** argv)
 	if (result < 0) {
 		printf("Failed to run event handler on device\n");
 		goto rule_cleanup;
+	}
+
+	printf("init DOCA...\n");
+	result = doca_init(&dpdk_config);
+	if (result != DOCA_SUCCESS) {
+		printf("Failed to init DOCA!\n");
+		return -1;
 	}
 
 	signal(SIGINT, signal_handler);
