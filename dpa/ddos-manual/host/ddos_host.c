@@ -786,7 +786,7 @@ int main(int argc, char ** argv)
 		goto rule_cleanup;
 	}
 
-	printf("Run VXLAN handler...\n");
+	printf("Run DDOS handler...\n");
 	result = ddos_run_event_handler(&app_cfg);
 	if (result < 0) {
 		printf("Failed to run event handler on device\n");
