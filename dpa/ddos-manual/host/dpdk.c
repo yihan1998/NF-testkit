@@ -223,24 +223,37 @@ int dpdk_ports_init(struct application_dpdk_config *app_config) {
     return 0;
 }
 
-int run_dpdk_loop(void) {
+int launch_one_lcore(void * args) {
     int portid;
     struct rte_mbuf * rx_pkts[DEFAULT_PKT_BURST];
     int nb_rx, nb_tx;
+	int lid = rte_lcore_id();
+	int qid = lid;
 	RTE_ETH_FOREACH_DEV(portid) {
-        for (int i = 0; i < nb_cores; i++) {
-            nb_rx = rte_eth_rx_burst(portid, i, rx_pkts, DEFAULT_PKT_BURST);
-            if (nb_rx) {
-                printf("Receive %d packets\n", nb_rx);
-                nb_tx = rte_eth_tx_burst(portid, i, rx_pkts, nb_rx);
-                printf("Send %d packets\n", nb_tx);
-                if (unlikely(nb_tx < nb_rx)) {
-                    do {
-                        rte_pktmbuf_free(rx_pkts[nb_tx]);
-                    } while (++nb_tx < nb_rx);
-                }
-            }
-        }
+        // for (int i = 0; i < nb_cores; i++) {
+        //     nb_rx = rte_eth_rx_burst(portid, i, rx_pkts, DEFAULT_PKT_BURST);
+        //     if (nb_rx) {
+        //         printf("Receive %d packets\n", nb_rx);
+        //         nb_tx = rte_eth_tx_burst(portid, i, rx_pkts, nb_rx);
+        //         printf("Send %d packets\n", nb_tx);
+        //         if (unlikely(nb_tx < nb_rx)) {
+        //             do {
+        //                 rte_pktmbuf_free(rx_pkts[nb_tx]);
+        //             } while (++nb_tx < nb_rx);
+        //         }
+        //     }
+        // }
+		nb_rx = rte_eth_rx_burst(portid, qid, rx_pkts, DEFAULT_PKT_BURST);
+		if (nb_rx) {
+			printf("Receive %d packets\n", nb_rx);
+			nb_tx = rte_eth_tx_burst(portid, qid, rx_pkts, nb_rx);
+			printf("Send %d packets\n", nb_tx);
+			if (unlikely(nb_tx < nb_rx)) {
+				do {
+					rte_pktmbuf_free(rx_pkts[nb_tx]);
+				} while (++nb_tx < nb_rx);
+			}
+		}
     }
     return 0;
 }

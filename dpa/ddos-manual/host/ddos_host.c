@@ -798,19 +798,8 @@ int main(int argc, char ** argv)
 	printf("Flexio reflector Started\n");
 	/* Add an additional new line for output readability */
 	printf("Press Ctrl+C to terminate\n");
-	while (!force_quit) {
-        // flexio_msg_stream_flush(default_stream);
-		sleep(1);
-		run_dpdk_loop();
-		// printf(" [FLOW MONITOR] statistics: \n");
-		// for (int i = 0; i < app_cfg.nb_dpa_threads; i++) {
-        //     printf("%d ", app_cfg.host_buffer[i]);
-        //     if (i % 16 == 15) {
-        //         printf("\n");
-        //     }
-        // }
-		// printf("\n");
-	}
+    rte_eal_mp_remote_launch(launch_one_lcore, NULL, CALL_MAIN);
+    rte_eal_mp_wait_lcore();
 
 	vxlan_destroy(&app_cfg);
 	return EXIT_SUCCESS;
