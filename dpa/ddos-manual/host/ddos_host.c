@@ -735,12 +735,12 @@ int main(int argc, char ** argv)
 		return -1;
 	}
 
-	// printf("init DOCA...\n");
-	// result = doca_init(&dpdk_config);
-	// if (result != DOCA_SUCCESS) {
-	// 	printf("Failed to init DOCA!\n");
-	// 	return -1;
-	// }
+	printf("init DOCA...\n");
+	result = doca_init(&dpdk_config);
+	if (result != DOCA_SUCCESS) {
+		printf("Failed to init DOCA!\n");
+		return -1;
+	}
 
 	printf("Open IB device and allocate PD...\n");
     result = setup_ibv_device(&app_cfg);
