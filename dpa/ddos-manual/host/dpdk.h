@@ -41,6 +41,7 @@ struct application_dpdk_config {
 };
 
 extern bool force_quit; /* Set to true to terminate the application */
+extern struct flexio_msg_stream *default_stream;
 
 doca_error_t dpdk_queues_and_ports_init(struct application_dpdk_config *app_dpdk_config);
 int config_ports(void);
