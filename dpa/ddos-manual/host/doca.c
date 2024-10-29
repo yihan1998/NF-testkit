@@ -72,7 +72,7 @@ static doca_error_t create_classifier_pipe(struct doca_flow_port *port, int port
 		return result;
 	}
 
-    result = doca_flow_pipe_add_entry(0, *pipe, &match, NULL, NULL, &fwd, 0, &status, NULL);
+    result = doca_flow_pipe_add_entry(0, *pipe, &match, &actions, NULL, NULL, 0, &status, NULL);
 	if (result != DOCA_SUCCESS) {
 		printf("[%s:%d] Failed to create TCP flags filter pipe entry: %s\n", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
