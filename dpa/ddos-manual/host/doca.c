@@ -42,9 +42,11 @@ static doca_error_t add_classifier_pipe_entry(struct doca_flow_port *port, int p
 	struct doca_flow_fwd fwd;
 	uint8_t priority = 0;
 	doca_error_t result;
+	struct entries_status status;
 
 	memset(&match, 0, sizeof(match));
 	memset(&fwd, 0, sizeof(fwd));
+	memset(&status, 0, sizeof(status));
 
 	match.parser_meta.outer_l4_type = DOCA_FLOW_L4_META_TCP;
 	match.parser_meta.outer_l3_type = DOCA_FLOW_L3_META_IPV4;
@@ -60,7 +62,7 @@ static doca_error_t add_classifier_pipe_entry(struct doca_flow_port *port, int p
 		return result;
 	}
 
-    result = doca_flow_pipe_add_entry(0, pipe, &match, &actions, NULL, NULL, 0, &status, NULL);
+    result = doca_flow_pipe_add_entry(0, pipe, &match, NULL, NULL, NULL, 0, &status, NULL);
 	if (result != DOCA_SUCCESS) {
 		printf("[%s:%d] Failed to create TCP flags filter pipe entry: %s\n", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
@@ -326,7 +328,7 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 
         printf("Creating classifier pipe on port %d...\n", port_id);
 
-		result = create_classifier_pipe(ports[port_id], port_id, &classifier_pipe[port_id]);
+		result = create_classifier_pipe(ports[port_id], &classifier_pipe[port_id]);
 		if (result != DOCA_SUCCESS) {
 			printf("Failed to create classifier pipe: %s\n", doca_error_get_descr(result));
 			stop_doca_flow_ports(nb_ports, ports);
