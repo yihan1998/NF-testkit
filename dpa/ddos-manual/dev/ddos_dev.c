@@ -244,7 +244,7 @@ void __dpa_global__ ddos_device_event_handler(uint64_t index)
 		flexio_dev_print("Failed to acquire FlexIO window ptr\n");
     }
 
-	flexio_dev_print("Init packet count %d(%p)\n", *dev_ctx->host_buffer, (void *)dev_ctx->host_buffer);
+	// flexio_dev_print("Init packet count %d(%p)\n", *dev_ctx->host_buffer, (void *)dev_ctx->host_buffer);
 
 	// struct flexio_dev_thread_ctx *dtctx;
     // struct device_context *dev_ctx = &dev_ctxs[index];
