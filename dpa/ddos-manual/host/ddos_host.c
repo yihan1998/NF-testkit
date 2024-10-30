@@ -462,9 +462,9 @@ int create_tx_table(struct app_config *app_cfg)
 	}
 	match_mask->match_sz = MATCH_SIZE;
 	/* Fill match mask, match on all destination mac bits */
-	// DEVX_SET(dr_match_spec, match_mask->match_buf, smac_47_16, 0xffffffff);
-	// DEVX_SET(dr_match_spec, match_mask->match_buf, smac_15_0, 0xffff);
-	DEVX_SET(dr_match_spec, match_mask->match_buf, udp_dport, 0xffff);
+	DEVX_SET(dr_match_spec, match_mask->match_buf, smac_47_16, 0xffffffff);
+	DEVX_SET(dr_match_spec, match_mask->match_buf, smac_15_0, 0xffff);
+	// DEVX_SET(dr_match_spec, match_mask->match_buf, udp_dport, 0xffff);
 
 	result = create_flow_table(app_cfg->fdb_domain,
 				   0, /* Table level */
