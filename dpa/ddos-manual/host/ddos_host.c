@@ -528,9 +528,8 @@ int create_steering_rule_tx(struct app_config *app_cfg, struct dpa_process_conte
 
 	actions[0] = ctx->tx_root_rule->dr_action;
 	/* Fill rule match, match on destination mac address with this value */
-	// DEVX_SET(dr_match_spec, match_mask->match_buf, smac_47_16, (ctx->mac_addr) >> 16);
-	// DEVX_SET(dr_match_spec, match_mask->match_buf, smac_15_0, (ctx->mac_addr) % (1 << 16));
-	DEVX_SET(dr_match_spec, match_mask->match_buf, udp_dport, ctx->udp_port);
+	DEVX_SET(dr_match_spec, match_mask->match_buf, smac_47_16, (ctx->mac_addr) >> 16);
+	DEVX_SET(dr_match_spec, match_mask->match_buf, smac_15_0, (ctx->mac_addr) % (1 << 16));
 	ctx->tx_root_rule->dr_rule =
 		mlx5dv_dr_rule_create(app_cfg->tx_flow_root_table->dr_matcher, match_mask, 1, actions);
 	if (ctx->tx_root_rule->dr_rule == NULL) {
