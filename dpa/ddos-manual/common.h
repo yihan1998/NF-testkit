@@ -110,6 +110,7 @@ struct dr_flow_rule {
 
 struct dpa_process_context {
 	uint64_t mac_addr;
+	uint16_t udp_port;
 
 	struct host2dev_processor_data *dev_data;		/* device data */
 
