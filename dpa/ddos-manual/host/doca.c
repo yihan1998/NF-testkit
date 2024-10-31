@@ -75,7 +75,7 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
 {
     struct doca_flow_match match;
 	struct doca_flow_actions actions, *actions_arr[NB_ACTIONS_ARR];
-	struct doca_flow_fwd fwd;
+	struct doca_flow_fwd fwd = {.type = DOCA_FLOW_FWD_CHANGEABLE};
 	struct doca_flow_monitor counter;
 	struct doca_flow_pipe_cfg *pipe_cfg;
 	// uint16_t rss_queues[MAX_RSS_QUEUES];
@@ -83,7 +83,6 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
 
 	memset(&match, 0, sizeof(match));
 	memset(&actions, 0, sizeof(actions));
-	memset(&fwd, 0, sizeof(fwd));
 	memset(&counter, 0, sizeof(counter));
 
 	/* 5 tuple match */
@@ -137,8 +136,6 @@ static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id
 	// fwd.rss_outer_flags = DOCA_FLOW_RSS_IPV4 | DOCA_FLOW_RSS_TCP | DOCA_FLOW_RSS_UDP;
 	// fwd.num_of_queues = nb_rss_queues;
 
-	fwd.type = DOCA_FLOW_FWD_CHANGEABLE;
-
 	result = doca_flow_pipe_create(pipe_cfg, &fwd, NULL, pipe);
 	if (result != DOCA_SUCCESS) {
 		printf("[%s:%d] Failed to create doca flow pipe, err: %s\n", __func__, __LINE__, doca_error_get_descr(result));
@@ -183,8 +180,10 @@ static doca_error_t add_monitor_pipe_entry(struct doca_flow_pipe *pipe, int port
 	fwd.num_of_queues = nb_rss_queues;
 
 	result = doca_flow_pipe_add_entry(0, pipe, &match, &actions, &monitor, &fwd, 0, status, entry);
-	if (result != DOCA_SUCCESS)
+	if (result != DOCA_SUCCESS) {
+		printf("[%s:%d] Failed to add entry to pipe: %s", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
+	}
 
 	dst_port = rte_cpu_to_be_16(1234);
 
@@ -203,8 +202,10 @@ static doca_error_t add_monitor_pipe_entry(struct doca_flow_pipe *pipe, int port
 	fwd.port_id = port_id ^ 1;
 
 	result = doca_flow_pipe_add_entry(0, pipe, &match, &actions, &monitor, &fwd, 0, status, entry);
-	if (result != DOCA_SUCCESS)
+	if (result != DOCA_SUCCESS) {
+		printf("[%s:%d] Failed to add entry to pipe: %s", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
+	}
 
 	return DOCA_SUCCESS;
 }
