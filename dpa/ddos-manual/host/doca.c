@@ -114,7 +114,7 @@ static doca_error_t create_rss_pipe(struct doca_flow_port *port, struct doca_flo
 	fwd_miss.type = DOCA_FLOW_FWD_PORT;
 	fwd_miss.port_id = port_id ^ 1;
 
-	result = doca_flow_pipe_create(pipe_cfg, &fwd, NULL, pipe);
+	result = doca_flow_pipe_create(pipe_cfg, &fwd, &fwd_miss, pipe);
 destroy_pipe_cfg:
 	doca_flow_pipe_cfg_destroy(pipe_cfg);
 	return result;
