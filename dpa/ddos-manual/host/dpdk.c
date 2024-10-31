@@ -58,6 +58,50 @@ struct rte_eth_conf port_conf = {
 /* Packet mempool for each core */
 struct rte_mempool * pkt_mempools[8];
 
+void print_ipv4(struct rte_ipv4_hdr * iphdr) {
+    char src_ip[INET_ADDRSTRLEN];
+    char dst_ip[INET_ADDRSTRLEN];
+    struct in_addr src_addr = { .s_addr = iphdr->src_addr };
+    struct in_addr dst_addr = { .s_addr = iphdr->dst_addr };
+
+    inet_ntop(AF_INET, &src_addr, src_ip, sizeof(src_ip));
+    inet_ntop(AF_INET, &dst_addr, dst_ip, sizeof(dst_ip));
+
+    printf("IP Header:\n");
+    printf("  Version: %u\n", iphdr->ihl);
+    printf("  Header Length: %u\n", iphdr->version);
+    printf("  Type of Service: %d\n", iphdr->type_of_service);
+    printf("  Total Length: %d\n", ntohs(iphdr->total_length));
+    printf("  Identification: %d\n", ntohs(iphdr->packet_id));
+    printf("  Fragment Offset: %d\n", ntohs(iphdr->fragment_offset));
+    printf("  Time to Live: %d\n", iphdr->time_to_live);
+    printf("  Protocol: %d\n", iphdr->next_proto_id);
+    printf("  Header Checksum: 0x%04x\n", ntohs(iphdr->hdr_checksum));
+    printf("  Source IP: %s\n", src_ip);
+    printf("  Destination IP: %s\n", dst_ip);
+}
+
+void print_tcp_header(struct rte_tcp_hdr * tcphdr) {
+    printf("TCP Header:\n");
+    printf("  Source Port: %d\n", ntohs(tcphdr->src_port));
+    printf("  Destination Port: %d\n", ntohs(tcphdr->dst_port));
+    printf("  Sequence Number: %u\n", ntohl(tcphdr->sent_seq));
+    printf("  Acknowledgment Number: %u\n", ntohl(tcphdr->recv_ack));
+    printf("  Data Offset: %d\n", tcphdr->data_off >> 4);
+    printf("  Flags: 0x%02x\n", tcphdr->tcp_flags);
+    printf("  Window: %d\n", ntohs(tcphdr->rx_win));
+    printf("  Checksum: 0x%04x\n", ntohs(tcphdr->cksum));
+    printf("  Urgent Pointer: %d\n", ntohs(tcphdr->tcp_urp));
+}
+
+void print_udp_header(struct rte_udp_hdr * udphdr) {
+    printf("UDP Header:\n");
+    printf("  Source Port: %d\n", ntohs(udphdr->src_port));
+    printf("  Destination Port: %d\n", ntohs(udphdr->dst_port));
+    printf("  Length: %d\n", ntohs(udphdr->dgram_len));
+    printf("  Checksum: 0x%04x\n", ntohs(udphdr->dgram_cksum));
+}
+
 static doca_error_t
 setup_hairpin_queues(uint16_t port_id, uint16_t peer_port_id, uint16_t *reserved_hairpin_q_list, int hairpin_queue_len)
 {
@@ -240,6 +284,18 @@ int launch_one_lcore(void * args) {
 			if (nb_rx) {
 				printf("Receive %d packets\n", nb_rx);
 				nb_tx = rte_eth_tx_burst(portid, qid, rx_pkts, nb_rx);
+				for (int i = 0; i < nb_rx; i++) {
+					struct rte_ether_hdr * ethhdr = (struct rte_ether_hdr *)pkt;
+                    struct rte_ipv4_hdr * iphdr = (struct rte_ipv4_hdr *)&ethhdr[1];
+                    print_ipv4(iphdr);
+					if (iphdr->next_proto_id == IPPROTO_TCP) {
+                        struct rte_tcp_hdr * tcphdr = (struct rte_tcp_hdr *)&iphdr[1];
+                        print_tcp_header(tcphdr);
+                    } else if (iphdr->next_proto_id == IPPROTO_UDP) {
+                        struct rte_udp_hdr * udphdr = (struct rte_udp_hdr *)&iphdr[1];
+                        print_udp_header(udphdr);
+                    }
+				}
 				printf("Send %d packets\n", nb_tx);
 				if (unlikely(nb_tx < nb_rx)) {
 					do {
