@@ -77,13 +77,11 @@ static doca_error_t create_rss_pipe(struct doca_flow_port *port, int port_id, st
 	struct doca_flow_pipe_cfg *pipe_cfg;
 	struct doca_flow_match match;
 	struct doca_flow_fwd fwd;
-	struct doca_flow_fwd fwd_miss;
-	uint16_t rss_queues[MAX_RSS_QUEUES];
+	// uint16_t rss_queues[MAX_RSS_QUEUES];
 	doca_error_t result;
 
 	memset(&match, 0, sizeof(match));
 	memset(&fwd, 0, sizeof(fwd));
-	memset(&fwd_miss, 0, sizeof(fwd_miss));
 
 	result = doca_flow_pipe_cfg_create(&pipe_cfg, port);
 	if (result != DOCA_SUCCESS) {
@@ -102,19 +100,19 @@ static doca_error_t create_rss_pipe(struct doca_flow_port *port, int port_id, st
 		goto destroy_pipe_cfg;
 	}
 
-    for (int i = 0; i < nb_rss_queues; ++i) {
-		rss_queues[i] = i;
-    }
+    // for (int i = 0; i < nb_rss_queues; ++i) {
+	// 	rss_queues[i] = i;
+    // }
 
-	fwd.type = DOCA_FLOW_FWD_RSS;
-	fwd.rss_queues = rss_queues;
-	fwd.rss_outer_flags = DOCA_FLOW_RSS_IPV4 | DOCA_FLOW_RSS_TCP | DOCA_FLOW_RSS_UDP;
-	fwd.num_of_queues = nb_rss_queues;
+	// fwd.type = DOCA_FLOW_FWD_RSS;
+	// fwd.rss_queues = rss_queues;
+	// fwd.rss_outer_flags = DOCA_FLOW_RSS_IPV4 | DOCA_FLOW_RSS_TCP | DOCA_FLOW_RSS_UDP;
+	// fwd.num_of_queues = nb_rss_queues;
 
-	fwd_miss.type = DOCA_FLOW_FWD_PORT;
-	fwd_miss.port_id = port_id ^ 1;
+	fwd.type = DOCA_FLOW_FWD_PORT;
+	fwd.port_id = port_id ^ 1;
 
-	result = doca_flow_pipe_create(pipe_cfg, &fwd, &fwd_miss, pipe);
+	result = doca_flow_pipe_create(pipe_cfg, &fwd, NULL, pipe);
 	if (result != DOCA_SUCCESS) {
 		printf("[%s:%d] Failed to create doca flow pipe, err: %s\n", __func__, __LINE__, doca_error_get_descr(result));
 		return result;
