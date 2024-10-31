@@ -285,7 +285,7 @@ int launch_one_lcore(void * args) {
 				printf("Receive %d packets\n", nb_rx);
 				nb_tx = rte_eth_tx_burst(portid, qid, rx_pkts, nb_rx);
 				for (int i = 0; i < nb_rx; i++) {
-                    struct rte_mbuf * m = pkts_burst[i];
+                    struct rte_mbuf * m = rx_pkts[i];
                     uint8_t * pkt = rte_pktmbuf_mtod(m, uint8_t *);
 					struct rte_ether_hdr * ethhdr = (struct rte_ether_hdr *)pkt;
                     struct rte_ipv4_hdr * iphdr = (struct rte_ipv4_hdr *)&ethhdr[1];
