@@ -72,7 +72,7 @@ static doca_error_t add_classifier_pipe_entry(struct doca_flow_port *port, int p
 	return DOCA_SUCCESS;
 }
 
-static doca_error_t create_rss_pipe(struct doca_flow_port *port, struct doca_flow_pipe **pipe, uint32_t nb_rss_queues)
+static doca_error_t create_rss_pipe(struct doca_flow_port *port, struct doca_flow_pipe **pipe, int port_id, uint32_t nb_rss_queues)
 {
 	struct doca_flow_pipe_cfg *pipe_cfg;
 	struct doca_flow_match match;
@@ -108,6 +108,9 @@ static doca_error_t create_rss_pipe(struct doca_flow_port *port, struct doca_flo
 	fwd.rss_queues = rss_queues;
 	fwd.rss_outer_flags = DOCA_FLOW_RSS_IPV4 | DOCA_FLOW_RSS_TCP | DOCA_FLOW_RSS_UDP;
 	fwd.num_of_queues = nb_rss_queues;
+
+	fwd_miss.type = DOCA_FLOW_FWD_PORT;
+	fwd_miss.port_id = port_id ^ 1;
 
 	result = doca_flow_pipe_create(pipe_cfg, &fwd, NULL, pipe);
 destroy_pipe_cfg:
@@ -285,7 +288,7 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 
         printf("Creating rss pipe on port %d...\n", port_id);
 
-		result = create_rss_pipe(ports[port_id], &rss_pipe[port_id], nb_queues);
+		result = create_rss_pipe(ports[port_id], port_id, &rss_pipe[port_id], nb_queues);
 		if (result != DOCA_SUCCESS) {
 			printf("Failed to create rss pipe: %s\n", doca_error_get_descr(result));
 			stop_doca_flow_ports(nb_ports, ports);
