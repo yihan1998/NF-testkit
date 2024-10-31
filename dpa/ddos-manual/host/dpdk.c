@@ -58,6 +58,13 @@ struct rte_eth_conf port_conf = {
 /* Packet mempool for each core */
 struct rte_mempool * pkt_mempools[8];
 
+void print_ether_hdr(struct rte_ether_hdr * ethhdr) {
+    printf("Ethernet Header:\n");
+    printf("  Destination MAC " RTE_ETHER_ADDR_PRT_FMT "\n", RTE_ETHER_ADDR_BYTES(&ethhdr->dst_addr));
+    printf("  Source MAC " RTE_ETHER_ADDR_PRT_FMT "\n", RTE_ETHER_ADDR_BYTES(&ethhdr->src_addr));
+    printf("  EtherType: 0x%04x\n", ntohs(ethhdr->ether_type));
+}
+
 void print_ipv4(struct rte_ipv4_hdr * iphdr) {
     char src_ip[INET_ADDRSTRLEN];
     char dst_ip[INET_ADDRSTRLEN];
@@ -289,6 +296,7 @@ int launch_one_lcore(void * args) {
                     uint8_t * pkt = rte_pktmbuf_mtod(m, uint8_t *);
 					struct rte_ether_hdr * ethhdr = (struct rte_ether_hdr *)pkt;
                     struct rte_ipv4_hdr * iphdr = (struct rte_ipv4_hdr *)&ethhdr[1];
+					print_ether_hdr(ethhdr);
                     print_ipv4(iphdr);
 					if (iphdr->next_proto_id == IPPROTO_TCP) {
                         struct rte_tcp_hdr * tcphdr = (struct rte_tcp_hdr *)&iphdr[1];
