@@ -77,11 +77,13 @@ static doca_error_t create_rss_pipe(struct doca_flow_port *port, struct doca_flo
 	struct doca_flow_pipe_cfg *pipe_cfg;
 	struct doca_flow_match match;
 	struct doca_flow_fwd fwd;
+	struct doca_flow_fwd fwd_miss;
 	uint16_t rss_queues[MAX_RSS_QUEUES];
 	doca_error_t result;
 
 	memset(&match, 0, sizeof(match));
 	memset(&fwd, 0, sizeof(fwd));
+	memset(&fwd_miss, 0, sizeof(fwd_miss));
 
 	result = doca_flow_pipe_cfg_create(&pipe_cfg, port);
 	if (result != DOCA_SUCCESS) {
