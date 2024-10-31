@@ -72,7 +72,7 @@ static doca_error_t add_classifier_pipe_entry(struct doca_flow_port *port, int p
 	return DOCA_SUCCESS;
 }
 
-static doca_error_t create_rss_pipe(struct doca_flow_port *port, struct doca_flow_pipe **pipe, int port_id, uint32_t nb_rss_queues)
+static doca_error_t create_rss_pipe(struct doca_flow_port *port, int port_id, struct doca_flow_pipe **pipe, uint32_t nb_rss_queues)
 {
 	struct doca_flow_pipe_cfg *pipe_cfg;
 	struct doca_flow_match match;
@@ -115,6 +115,11 @@ static doca_error_t create_rss_pipe(struct doca_flow_port *port, struct doca_flo
 	fwd_miss.port_id = port_id ^ 1;
 
 	result = doca_flow_pipe_create(pipe_cfg, &fwd, &fwd_miss, pipe);
+	if (result != DOCA_SUCCESS) {
+		printf("[%s:%d] Failed to create doca flow pipe, err: %s\n", __func__, __LINE__, doca_error_get_descr(result));
+		return result;
+	}
+
 destroy_pipe_cfg:
 	doca_flow_pipe_cfg_destroy(pipe_cfg);
 	return result;
