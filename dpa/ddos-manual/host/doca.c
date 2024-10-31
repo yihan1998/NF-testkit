@@ -75,6 +75,7 @@ static doca_error_t add_classifier_pipe_entry(struct doca_flow_port *port, int p
 static doca_error_t create_rss_pipe(struct doca_flow_port *port, struct doca_flow_pipe **pipe, uint32_t nb_rss_queues)
 {
 	struct doca_flow_pipe_cfg *pipe_cfg;
+	struct doca_flow_fwd fwd;
 	uint16_t rss_queues[MAX_RSS_QUEUES];
 	doca_error_t result;
 
