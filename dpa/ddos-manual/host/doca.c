@@ -71,7 +71,7 @@ static doca_error_t add_classifier_pipe_entry(struct doca_flow_port *port, int p
 	return DOCA_SUCCESS;
 }
 
-static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id, uint32_t nb_rss_queues, struct doca_flow_pipe **pipe)
+static doca_error_t create_monitor_pipe(struct doca_flow_port *port, int port_id, struct doca_flow_pipe **pipe)
 {
     struct doca_flow_match match;
 	struct doca_flow_actions actions, *actions_arr[NB_ACTIONS_ARR];
@@ -150,9 +150,7 @@ destroy_pipe_cfg:
 	return result;
 }
 
-static doca_error_t add_monitor_pipe_entry(struct doca_flow_pipe *pipe, 
-							struct entries_status *status, 
-						   	struct doca_flow_pipe_entry **entry)
+static doca_error_t add_monitor_pipe_entry(struct doca_flow_pipe *pipe, int port_id, uint32_t nb_rss_queues, struct entries_status *status, struct doca_flow_pipe_entry **entry)
 {
 	struct doca_flow_match match;
 	struct doca_flow_actions actions;
@@ -249,7 +247,7 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 
         printf("Creating monitor pipe on port %d...\n", port_id);
 
-        result = create_monitor_pipe(ports[port_id], port_id, nb_queues, &monitor_pipe[port_id]);
+        result = create_monitor_pipe(ports[port_id], port_id, &monitor_pipe[port_id]);
 		if (result != DOCA_SUCCESS) {
 			printf("Failed to create monitor pipe: %s\n", doca_error_get_descr(result));
 			stop_doca_flow_ports(nb_ports, ports);
@@ -259,7 +257,7 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 
         printf("Adding entry to monitor pipe on port %d...\n", port_id);
 
-		result = add_monitor_pipe_entry(monitor_pipe[port_id], &status_ingress, &match_entry[port_id]);
+		result = add_monitor_pipe_entry(monitor_pipe[port_id], port_id, nb_queues, &status_ingress, &match_entry[port_id]);
 		if (result != DOCA_SUCCESS) {
 			printf("Failed to add entry to monitor pipe: %s\n", doca_error_get_descr(result));
 			stop_doca_flow_ports(nb_ports, ports);
