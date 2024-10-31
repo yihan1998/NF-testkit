@@ -222,7 +222,7 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 	struct doca_flow_port *ports[nb_ports];
 	struct doca_dev *dev_arr[nb_ports];
 	struct entries_status status_ingress;
-	int num_of_entries_ingress = 1;
+	int num_of_entries_ingress = 2;
 	doca_error_t result;
 	int port_id;
 
