@@ -75,9 +75,13 @@ static doca_error_t add_classifier_pipe_entry(struct doca_flow_port *port, int p
 static doca_error_t create_rss_pipe(struct doca_flow_port *port, struct doca_flow_pipe **pipe, uint32_t nb_rss_queues)
 {
 	struct doca_flow_pipe_cfg *pipe_cfg;
+	struct doca_flow_match match;
 	struct doca_flow_fwd fwd;
 	uint16_t rss_queues[MAX_RSS_QUEUES];
 	doca_error_t result;
+
+	memset(&match, 0, sizeof(match));
+	memset(&fwd, 0, sizeof(fwd));
 
 	result = doca_flow_pipe_cfg_create(&pipe_cfg, port);
 	if (result != DOCA_SUCCESS) {
@@ -88,6 +92,11 @@ static doca_error_t create_rss_pipe(struct doca_flow_port *port, struct doca_flo
 	result = set_flow_pipe_cfg(pipe_cfg, "RSS_PIPE", DOCA_FLOW_PIPE_BASIC, false);
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to set doca_flow_pipe_cfg: %s\n", doca_error_get_descr(result));
+		goto destroy_pipe_cfg;
+	}
+	result = doca_flow_pipe_cfg_set_match(pipe_cfg, &match, NULL);
+	if (result != DOCA_SUCCESS) {
+		printf("Failed to set doca_flow_pipe_cfg match: %s\n", doca_error_get_descr(result));
 		goto destroy_pipe_cfg;
 	}
 
