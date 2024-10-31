@@ -170,14 +170,20 @@ static doca_error_t add_monitor_pipe_entry(struct doca_flow_pipe *pipe, int port
 	actions.meta.pkt_meta = 1;
 	actions.action_idx = 0;
 
-    for (int i = 0; i < nb_rss_queues; ++i) {
-		rss_queues[i] = i;
-    }
+    // for (int i = 0; i < nb_rss_queues; ++i) {
+	// 	rss_queues[i] = i;
+    // }
 
+	// fwd.type = DOCA_FLOW_FWD_RSS;
+	// fwd.rss_queues = rss_queues;
+	// fwd.rss_outer_flags = DOCA_FLOW_RSS_IPV4 | DOCA_FLOW_RSS_TCP | DOCA_FLOW_RSS_UDP;
+	// fwd.num_of_queues = nb_rss_queues;
+
+	rss_queues[0] = 0;
 	fwd.type = DOCA_FLOW_FWD_RSS;
 	fwd.rss_queues = rss_queues;
-	fwd.rss_outer_flags = DOCA_FLOW_RSS_IPV4 | DOCA_FLOW_RSS_TCP | DOCA_FLOW_RSS_UDP;
-	fwd.num_of_queues = nb_rss_queues;
+	fwd.rss_inner_flags = DOCA_FLOW_RSS_IPV4 | DOCA_FLOW_RSS_TCP;
+	fwd.num_of_queues = 1;
 
 	result = doca_flow_pipe_add_entry(0, pipe, &match, &actions, &monitor, &fwd, 0, status, entry);
 	if (result != DOCA_SUCCESS) {
