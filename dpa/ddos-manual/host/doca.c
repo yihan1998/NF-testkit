@@ -22,20 +22,62 @@ struct doca_sha_config doca_sha_cfg = {
 struct worker_context worker_ctx[NR_CPUS];
 __thread struct worker_context * ctx;
 
+
+doca_error_t open_doca_device_with_pci(const char *pci_addr, tasks_check func, struct doca_dev **retval)
+{
+	struct doca_devinfo **dev_list;
+	uint32_t nb_devs;
+	uint8_t is_addr_equal = 0;
+	int res;
+	size_t i;
+
+	/* Set default return value */
+	*retval = NULL;
+
+	res = doca_devinfo_create_list(&dev_list, &nb_devs);
+	if (res != DOCA_SUCCESS) {
+		printf("Failed to load doca devices list: %s\n", doca_error_get_descr(res));
+		return res;
+	}
+
+	/* Search */
+	for (i = 0; i < nb_devs; i++) {
+		res = doca_devinfo_is_equal_pci_addr(dev_list[i], pci_addr, &is_addr_equal);
+		if (res == DOCA_SUCCESS && is_addr_equal) {
+			/* If any special capabilities are needed */
+			if (func != NULL && func(dev_list[i]) != DOCA_SUCCESS)
+				continue;
+
+			/* if device can be opened */
+			res = doca_dev_open(dev_list[i], retval);
+			if (res == DOCA_SUCCESS) {
+				doca_devinfo_destroy_list(dev_list);
+				return res;
+			}
+		}
+	}
+
+	printf("Matching device not found\n");
+	res = DOCA_ERROR_NOT_FOUND;
+
+	doca_devinfo_destroy_list(dev_list);
+	return res;
+}
+
 doca_error_t doca_sha_init(void) {
 	doca_error_t result;
 
 	/* Open DOCA device */
 	result = open_doca_device_with_pci(doca_sha_cfg.pci_address, NULL, &doca_sha_cfg.dev);
 	if (result != DOCA_SUCCESS) {
-		printf("No device matching PCI address found. Reason: %s", doca_get_error_string(result));
+		printf("No device matching PCI address found. Reason: %s", doca_error_get_descr(result));
 		return result;
 	}
 
 	/* Create a DOCA RegEx instance */
 	result = doca_sha_create(&(doca_sha_cfg.doca_sha));
 	if (result != DOCA_SUCCESS) {
-		printf("DOCA SHA creation Failed. Reason: %s", doca_get_error_string(result));
+		printf("DOCA SHA creation Failed. Reason: %s", doca_error_get_descr(result));
 		doca_dev_close(doca_sha_cfg.dev);
 		return DOCA_ERROR_INITIALIZATION;
 	}
@@ -43,7 +85,7 @@ doca_error_t doca_sha_init(void) {
 	/* Set hw RegEx device to DOCA RegEx */
 	result = doca_ctx_dev_add(doca_sha_as_ctx(doca_sha_cfg.doca_sha), doca_sha_cfg.dev);
 	if (result != DOCA_SUCCESS) {
-		printf("Unable to install SHA device. Reason: %s", doca_get_error_string(result));
+		printf("Unable to install SHA device. Reason: %s", doca_error_get_descr(result));
 		result = DOCA_ERROR_INITIALIZATION;
 		return 0;
 	}
@@ -51,7 +93,7 @@ doca_error_t doca_sha_init(void) {
 	/* Start DOCA RegEx */
 	result = doca_ctx_start(doca_sha_as_ctx(doca_sha_cfg.doca_sha));
 	if (result != DOCA_SUCCESS) {
-		printf("Unable to start DOCA RegEx. Reason: %s", doca_get_error_string(result));
+		printf("Unable to start DOCA RegEx. Reason: %s", doca_error_get_descr(result));
 		result = DOCA_ERROR_INITIALIZATION;
 		return 0;
 	}
@@ -74,67 +116,67 @@ doca_error_t doca_sha_percore_init(struct doca_sha_ctx * sha_ctx) {
 
 	result = doca_buf_inventory_create(2, &sha_ctx->buf_inv);
 	if (result != DOCA_SUCCESS) {
-		printf("Unable to create doca_buf_inventory. Reason: %s\n", doca_get_error_string(result));
+		printf("Unable to create doca_buf_inventory. Reason: %s\n", doca_error_get_descr(result));
 		return 0;
 	}
 
 	result = doca_buf_inventory_start(sha_ctx->buf_inv);
 	if (result != DOCA_SUCCESS) {
-		printf("Unable to start doca_buf_inventory. Reason: %s\n", doca_get_error_string(result));
+		printf("Unable to start doca_buf_inventory. Reason: %s\n", doca_error_get_descr(result));
 		return 0;
 	}
 
 	result = doca_mmap_create(&sha_ctx->src_mmap);
 	if (result != DOCA_SUCCESS) {
-		printf("Unable to create doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		printf("Unable to create doca_mmap. Reason: %s\n", doca_error_get_descr(result));
 		return 0;
 	}
 
 	result = doca_mmap_create(&sha_ctx->dst_mmap);
 	if (result != DOCA_SUCCESS) {
-		printf("Unable to create doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		printf("Unable to create doca_mmap. Reason: %s\n", doca_error_get_descr(result));
 		return 0;
 	}
 
-	result = doca_mmap_dev_add(sha_ctx->src_mmap, sha_ctx->dev);
+	result = doca_mmap_add_dev(sha_ctx->src_mmap, sha_ctx->dev);
 	if (result != DOCA_SUCCESS) {
-		printf("Unable to add device to doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		printf("Unable to add device to doca_mmap. Reason: %s\n", doca_error_get_descr(result));
 		return 0;
 	}
 
-	result = doca_mmap_dev_add(sha_ctx->dst_mmap, sha_ctx->dev);
+	result = doca_mmap_add_dev(sha_ctx->dst_mmap, sha_ctx->dev);
 	if (result != DOCA_SUCCESS) {
-		printf("Unable to add device to doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		printf("Unable to add device to doca_mmap. Reason: %s\n", doca_error_get_descr(result));
 		return 0;
 	}
 
 	result = doca_mmap_set_memrange(sha_ctx->src_mmap, src_data_buffer, 512);
 	if (result != DOCA_SUCCESS) {
-		printf("Unable to register src memory with doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		printf("Unable to register src memory with doca_mmap. Reason: %s\n", doca_error_get_descr(result));
 		return 0;
 	}
 
 	result = doca_mmap_set_memrange(sha_ctx->dst_mmap, dst_data_buffer, 512);
 	if (result != DOCA_SUCCESS) {
-		printf("Unable to register src memory with doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		printf("Unable to register src memory with doca_mmap. Reason: %s\n", doca_error_get_descr(result));
 		return 0;
 	}
 
 	// result = doca_mmap_set_memrange(sha_ctx->mmap, sha_ctx->dst_data_buffer, sha_ctx->dst_data_buffer_len);
 	// if (result != DOCA_SUCCESS) {
-	// 	printf("Unable to register dest memory with doca_mmap. Reason: %s\n", doca_get_error_string(result));
+	// 	printf("Unable to register dest memory with doca_mmap. Reason: %s\n", doca_error_get_descr(result));
 	// 	return 0;
 	// }
 
 	result = doca_mmap_start(sha_ctx->src_mmap);
 	if (result != DOCA_SUCCESS) {
-		printf("Unable to start doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		printf("Unable to start doca_mmap. Reason: %s\n", doca_error_get_descr(result));
 		return 0;
 	}
 
 	result = doca_mmap_start(sha_ctx->dst_mmap);
 	if (result != DOCA_SUCCESS) {
-		printf("Unable to start doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		printf("Unable to start doca_mmap. Reason: %s\n", doca_error_get_descr(result));
 		return 0;
 	}
 

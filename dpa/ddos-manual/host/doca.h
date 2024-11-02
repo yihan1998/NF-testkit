@@ -4,6 +4,7 @@
 #include <doca_flow.h>
 #include <doca_dev.h>
 #include <doca_mmap.h>
+#include <doca_buf_inventory.h>
 
 #include "dpdk.h"
 
