@@ -126,6 +126,27 @@ doca_error_t doca_sha_percore_init(struct doca_sha_ctx * sha_ctx) {
     return DOCA_SUCCESS;
 }
 
+int doca_worker_init(struct worker_context * ctx) {
+	doca_error_t result;
+
+	result = doca_pe_create(&ctx->pe);
+	if (res != DOCA_SUCCESS) {
+		printf("Unable to create progress engine: %s\n", doca_error_get_descr(result));
+		return result;
+	}
+	ctx->sha_ctx.dev = doca_sha_cfg.dev;
+	ctx->sha_ctx.doca_sha = doca_sha_cfg.doca_sha;
+
+    /* Add workq to RegEx */
+	result = doca_pe_connect_ctx(ctx->pe, ctx->ctx);
+	if (result != DOCA_SUCCESS) {
+		printf("Failed to connect progress engine to context: %s\n", doca_error_get_descr(result));
+		return result;
+	}
+
+    return DOCA_SUCCESS;
+}
+
 static doca_error_t create_classifier_pipe(struct doca_flow_port *port, struct doca_flow_pipe **pipe)
 {
 	struct doca_flow_pipe_cfg *pipe_cfg;

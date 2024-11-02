@@ -29,6 +29,7 @@ struct doca_sha_ctx {
 extern struct doca_sha_config doca_sha_cfg;
 
 struct worker_context {
+	struct doca_pe * pe;
 	struct doca_workq * workq;
     struct doca_sha_ctx sha_ctx;
 } __attribute__((aligned(64)));
