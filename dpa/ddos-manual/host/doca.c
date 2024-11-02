@@ -184,8 +184,8 @@ doca_error_t doca_sha_percore_init(struct doca_sha_ctx * sha_ctx) {
     return DOCA_SUCCESS;
 }
 
-int doca_worker_percore_init(void) {
-    ctx = &worker_ctx[core_id];
+int doca_worker_percore_init(int lid) {
+    ctx = &worker_ctx[lid];
 	doca_sha_percore_init(&ctx->sha_ctx);
     return 0;
 };

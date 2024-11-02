@@ -44,7 +44,7 @@ struct worker_context {
 extern struct worker_context worker_ctx[NR_CPUS];
 extern __thread struct worker_context * ctx;
 
-int doca_worker_percore_init(void);
+int doca_worker_percore_init(int lid);
 int doca_worker_init(struct worker_context * ctx);
 
 doca_error_t doca_sha_percore_init(struct doca_sha_ctx * sha_ctx);

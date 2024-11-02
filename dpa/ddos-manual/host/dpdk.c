@@ -286,7 +286,7 @@ int launch_one_lcore(void * args) {
 	int lid = rte_lcore_id();
 	int qid = lid;
 
-    doca_worker_percore_init();
+    doca_worker_percore_init(lid);
 
 	while(!force_quit) {
 		if (lid == 0)
