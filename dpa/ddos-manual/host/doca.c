@@ -565,6 +565,8 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 		}
 	}
 
+	doca_sha_init();
+
     for (int i = 0; i < nb_cores; i++) {
         struct worker_context * ctx = &worker_ctx[i];
         doca_worker_init(ctx);
