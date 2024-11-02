@@ -61,7 +61,7 @@ doca_error_t doca_sha_init(void) {
 
 doca_error_t doca_sha_percore_init(struct doca_sha_ctx * sha_ctx) {
 	doca_error_t result;
-	char * data_buffer;
+	char * src_data_buffer, * dst_data_buffer;
 
 	src_data_buffer = (char *)calloc(512, sizeof(char));
 	dst_data_buffer = (char *)calloc(512, sizeof(char));
@@ -72,7 +72,7 @@ doca_error_t doca_sha_percore_init(struct doca_sha_ctx * sha_ctx) {
 	sha_ctx->dst_data_buffer = dst_data_buffer;
     sha_ctx->dst_data_buffer_len = 512;
 
-	result = doca_buf_inventory_create(NULL, 2, DOCA_BUF_EXTENSION_NONE, &sha_ctx->buf_inv);
+	result = doca_buf_inventory_create(2, &sha_ctx->buf_inv);
 	if (result != DOCA_SUCCESS) {
 		printf("Unable to create doca_buf_inventory. Reason: %s\n", doca_get_error_string(result));
 		return 0;
@@ -84,19 +84,37 @@ doca_error_t doca_sha_percore_init(struct doca_sha_ctx * sha_ctx) {
 		return 0;
 	}
 
-	result = (NULL, &sha_ctx->mmap);
+	result = doca_mmap_create(NULL, &sha_ctx->src_mmap);
 	if (result != DOCA_SUCCESS) {
 		printf("Unable to create doca_mmap. Reason: %s\n", doca_get_error_string(result));
 		return 0;
 	}
 
-	result = doca_mmap_dev_add(sha_ctx->mmap, sha_ctx->dev);
+	result = doca_mmap_create(NULL, &sha_ctx->dst_mmap);
+	if (result != DOCA_SUCCESS) {
+		printf("Unable to create doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		return 0;
+	}
+
+	result = doca_mmap_dev_add(sha_ctx->src_mmap, sha_ctx->dev);
 	if (result != DOCA_SUCCESS) {
 		printf("Unable to add device to doca_mmap. Reason: %s\n", doca_get_error_string(result));
 		return 0;
 	}
 
-	result = doca_mmap_set_memrange(sha_ctx->mmap, data_buffer, 8192);
+	result = doca_mmap_dev_add(sha_ctx->dst_mmap, sha_ctx->dev);
+	if (result != DOCA_SUCCESS) {
+		printf("Unable to add device to doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		return 0;
+	}
+
+	result = doca_mmap_set_memrange(sha_ctx->src_mmap, src_data_buffer, 512);
+	if (result != DOCA_SUCCESS) {
+		printf("Unable to register src memory with doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		return 0;
+	}
+
+	result = doca_mmap_set_memrange(sha_ctx->dst_mmap, dst_data_buffer, 512);
 	if (result != DOCA_SUCCESS) {
 		printf("Unable to register src memory with doca_mmap. Reason: %s\n", doca_get_error_string(result));
 		return 0;
@@ -108,18 +126,24 @@ doca_error_t doca_sha_percore_init(struct doca_sha_ctx * sha_ctx) {
 	// 	return 0;
 	// }
 
-	result = doca_mmap_start(sha_ctx->mmap);
+	result = doca_mmap_start(sha_ctx->src_mmap);
 	if (result != DOCA_SUCCESS) {
 		printf("Unable to start doca_mmap. Reason: %s\n", doca_get_error_string(result));
 		return 0;
 	}
 
-	if (doca_buf_inventory_buf_by_addr(sha_ctx->buf_inv, sha_ctx->mmap, sha_ctx->src_data_buffer, sha_ctx->src_data_buffer_len, &sha_ctx->src_buf) != DOCA_SUCCESS) {
+	result = doca_mmap_start(sha_ctx->dst_mmap);
+	if (result != DOCA_SUCCESS) {
+		printf("Unable to start doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		return 0;
+	}
+
+	if (doca_buf_inventory_buf_get_by_addr(sha_ctx->buf_inv, sha_ctx->src_mmap, sha_ctx->src_data_buffer, sha_ctx->src_data_buffer_len, &sha_ctx->src_buf) != DOCA_SUCCESS) {
         printf("Failed to create inventory buf!\n");
         return 0;
     }
 
-	if (doca_buf_inventory_buf_by_addr(sha_ctx->buf_inv, sha_ctx->mmap, sha_ctx->dst_data_buffer, sha_ctx->dst_data_buffer_len, &sha_ctx->dst_buf) != DOCA_SUCCESS) {
+	if (doca_buf_inventory_buf_get_by_addr(sha_ctx->buf_inv, sha_ctx->dst_mmap, sha_ctx->dst_data_buffer, sha_ctx->dst_data_buffer_len, &sha_ctx->dst_buf) != DOCA_SUCCESS) {
         printf("Failed to create inventory buf!\n");
         return 0;
     }

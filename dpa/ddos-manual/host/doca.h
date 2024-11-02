@@ -2,6 +2,8 @@
 #define _DOCA_H_
 
 #include <doca_flow.h>
+#include <doca_dev.h>
+#include <doca_mmap.h>
 
 #include "dpdk.h"
 
@@ -18,10 +20,13 @@ struct doca_sha_ctx {
 	char * src_data_buffer;		/* Data buffer */
 	size_t src_data_buffer_len;	/* Data buffer length */
 	struct doca_buf * src_buf;		/* DOCA buf */
+	struct doca_mmap * src_mmap;	/* DOCA mmap */
+
 	char * dst_data_buffer;		/* Data buffer */
 	size_t dst_data_buffer_len;	/* Data buffer length */
 	struct doca_buf * dst_buf;		/* DOCA buf */
-	struct doca_mmap * mmap;	/* DOCA mmap */
+	struct doca_mmap * dst_mmap;	/* DOCA mmap */
+
 	struct doca_dev * dev;		/* DOCA device */
 	struct doca_sha * doca_sha;   /* DOCA SHA interface */
 };
@@ -32,6 +37,8 @@ struct worker_context {
 	struct doca_pe * pe;
     struct doca_sha_ctx sha_ctx;
 } __attribute__((aligned(64)));
+
+#define NR_CPUS 16
 
 extern struct worker_context worker_ctx[NR_CPUS];
 extern __thread struct worker_context * ctx;
