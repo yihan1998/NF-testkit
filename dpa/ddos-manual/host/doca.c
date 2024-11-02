@@ -22,59 +22,57 @@ struct doca_sha_config doca_sha_cfg = {
 struct worker_context worker_ctx[NR_CPUS];
 __thread struct worker_context * ctx;
 
-doca_error_t open_doca_device_with_pci(const char *pci_addr, tasks_check func, struct doca_dev **retval)
+static doca_error_t sha_hash_is_supported(struct doca_devinfo *devinfo)
+{
+	return doca_sha_cap_task_hash_get_supported(devinfo, SHA_SAMPLE_ALGORITHM);
+}
+
+doca_error_t open_doca_device_with_capabilities(tasks_check func, struct doca_dev **retval)
 {
 	struct doca_devinfo **dev_list;
 	uint32_t nb_devs;
-	uint8_t is_addr_equal = 0;
-	int res;
+	doca_error_t result;
 	size_t i;
 
 	/* Set default return value */
 	*retval = NULL;
 
-	res = doca_devinfo_create_list(&dev_list, &nb_devs);
-	if (res != DOCA_SUCCESS) {
-		printf("Failed to load doca devices list: %s\n", doca_error_get_descr(res));
-		return res;
+	result = doca_devinfo_create_list(&dev_list, &nb_devs);
+	if (result != DOCA_SUCCESS) {
+		printf("Failed to load doca devices list: %s\n", doca_error_get_descr(result));
+		return result;
 	}
 
 	/* Search */
 	for (i = 0; i < nb_devs; i++) {
-		res = doca_devinfo_is_equal_pci_addr(dev_list[i], pci_addr, &is_addr_equal);
-		if (res == DOCA_SUCCESS && is_addr_equal) {
-			/* If any special capabilities are needed */
-			if (func != NULL && func(dev_list[i]) != DOCA_SUCCESS)
-				continue;
+		/* If any special capabilities are needed */
+		if (func(dev_list[i]) != DOCA_SUCCESS)
+			continue;
 
-			/* if device can be opened */
-			res = doca_dev_open(dev_list[i], retval);
-			if (res == DOCA_SUCCESS) {
-				doca_devinfo_destroy_list(dev_list);
-				return res;
-			}
+		/* If device can be opened */
+		if (doca_dev_open(dev_list[i], retval) == DOCA_SUCCESS) {
+			doca_devinfo_destroy_list(dev_list);
+			return DOCA_SUCCESS;
 		}
 	}
 
 	printf("Matching device not found\n");
-	res = DOCA_ERROR_NOT_FOUND;
-
 	doca_devinfo_destroy_list(dev_list);
-	return res;
+	return DOCA_ERROR_NOT_FOUND;
 }
 
 doca_error_t doca_sha_init(void) {
 	doca_error_t result;
 
 	/* Open DOCA device */
-	result = open_doca_device_with_pci(doca_sha_cfg.pci_address, NULL, &doca_sha_cfg.dev);
+	result = open_doca_device_with_capabilities(&sha_hash_is_supported, &doca_sha_cfg.dev);
 	if (result != DOCA_SUCCESS) {
 		printf("No device matching PCI address found. Reason: %s", doca_error_get_descr(result));
 		return result;
 	}
 
 	/* Create a DOCA RegEx instance */
-	result = doca_sha_create(&(doca_sha_cfg.doca_sha));
+	result = doca_sha_create(doca_sha_cfg.dev, &doca_sha_cfg.sha_ctx);
 	if (result != DOCA_SUCCESS) {
 		printf("DOCA SHA creation Failed. Reason: %s", doca_error_get_descr(result));
 		doca_dev_close(doca_sha_cfg.dev);
