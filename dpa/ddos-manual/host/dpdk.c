@@ -5,6 +5,7 @@
 #include <errno.h>
 
 #include "dpdk.h"
+#include "doca.h"
 
 #define USEC_PER_SEC    1000000L
 #define TIMEVAL_TO_USEC(t)  ((t.tv_sec * USEC_PER_SEC) + t.tv_usec)
@@ -276,7 +277,7 @@ int dpdk_ports_init(struct application_dpdk_config *app_config) {
 }
 
 int ddos_detect(struct rte_mbuf * m) {
-
+	return 0;
 }
 
 int launch_one_lcore(void * args) {
