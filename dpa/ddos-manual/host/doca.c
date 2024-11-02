@@ -155,7 +155,7 @@ int doca_worker_init(struct worker_context * ctx) {
 	doca_error_t result;
 
 	result = doca_pe_create(&ctx->pe);
-	if (res != DOCA_SUCCESS) {
+	if (result != DOCA_SUCCESS) {
 		printf("Unable to create progress engine: %s\n", doca_error_get_descr(result));
 		return result;
 	}
