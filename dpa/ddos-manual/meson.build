@@ -15,6 +15,7 @@ flexio_dep = dependency('libflexio', required: true)
 dpdk_dep = dependency('libdpdk', required: true)
 doca_common_dep = dependency('doca-common', required: true)
 doca_flow_dep = dependency('doca-flow', required: true)
+doca_sha_dep = dependency('doca-sha', required: true)
 
 add_project_arguments('-D DOCA_ALLOW_EXPERIMENTAL_API', language: ['c', 'cpp'])
 
