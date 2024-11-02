@@ -139,7 +139,7 @@ int doca_worker_init(struct worker_context * ctx) {
 	ctx->sha_ctx.doca_sha = doca_sha_cfg.doca_sha;
 
     /* Add workq to RegEx */
-	result = doca_pe_connect_ctx(ctx->pe, ctx->ctx);
+	result = doca_pe_connect_ctx(ctx->pe, doca_sha_as_ctx(ctx->sha_ctx.doca_sha));
 	if (result != DOCA_SUCCESS) {
 		printf("Failed to connect progress engine to context: %s\n", doca_error_get_descr(result));
 		return result;
