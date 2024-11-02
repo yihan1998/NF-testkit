@@ -5,6 +5,7 @@
 #include <doca_flow.h>
 
 #include "dpdk.h"
+#include "doca.h"
 #include "flow_common.h"
 
 #define MAX_RSS_QUEUES  16
@@ -401,9 +402,9 @@ static doca_error_t add_monitor_pipe_entry(struct doca_flow_pipe *pipe, int port
 
 doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 {
-	int nb_cores = app_dpdk_config->port_config.nb_cores;
 	int nb_ports = app_dpdk_config->port_config.nb_ports;
     int nb_queues = app_dpdk_config->port_config.nb_queues;
+	int nb_cores = rte_lcore_count()
 	struct flow_resources resource = {.nr_counters = 64};
 	uint32_t nr_shared_resources[SHARED_RESOURCE_NUM_VALUES] = {0};
 	struct doca_flow_port *ports[nb_ports];
