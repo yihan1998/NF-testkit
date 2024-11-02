@@ -286,6 +286,8 @@ int launch_one_lcore(void * args) {
 	int lid = rte_lcore_id();
 	int qid = lid;
 
+    doca_worker_percore_init();
+
 	while(!force_quit) {
 		if (lid == 0)
 			flexio_msg_stream_flush(default_stream);

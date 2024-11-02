@@ -22,7 +22,6 @@ struct doca_sha_config doca_sha_cfg = {
 struct worker_context worker_ctx[NR_CPUS];
 __thread struct worker_context * ctx;
 
-
 doca_error_t open_doca_device_with_pci(const char *pci_addr, tasks_check func, struct doca_dev **retval)
 {
 	struct doca_devinfo **dev_list;
@@ -185,6 +184,12 @@ doca_error_t doca_sha_percore_init(struct doca_sha_ctx * sha_ctx) {
     return DOCA_SUCCESS;
 }
 
+int doca_worker_percore_init(void) {
+    ctx = &worker_ctx[core_id];
+	doca_sha_percore_init(&ctx->sha_ctx);
+    return 0;
+};
+
 int doca_worker_init(struct worker_context * ctx) {
 	doca_error_t result;
 
@@ -193,6 +198,7 @@ int doca_worker_init(struct worker_context * ctx) {
 		printf("Unable to create progress engine: %s\n", doca_error_get_descr(result));
 		return result;
 	}
+
 	ctx->sha_ctx.dev = doca_sha_cfg.dev;
 	ctx->sha_ctx.doca_sha = doca_sha_cfg.doca_sha;
 
