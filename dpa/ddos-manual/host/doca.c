@@ -15,6 +15,8 @@ struct doca_flow_pipe *rss_pipe[2];
 struct doca_flow_pipe *monitor_pipe[2];
 struct doca_flow_pipe_entry *match_entry[2];
 
+#define SHA_SAMPLE_ALGORITHM (DOCA_SHA_ALGORITHM_SHA256) /* doca_sha_algorithm for the sample */
+
 struct doca_sha_config doca_sha_cfg = {
 	.pci_address = "03:00.0",
 };
