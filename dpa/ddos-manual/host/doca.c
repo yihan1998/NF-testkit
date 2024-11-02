@@ -82,14 +82,6 @@ doca_error_t doca_sha_init(void) {
 		return DOCA_ERROR_INITIALIZATION;
 	}
 
-	/* Set hw RegEx device to DOCA RegEx */
-	result = doca_ctx_dev_add(doca_sha_as_ctx(doca_sha_cfg.doca_sha), doca_sha_cfg.dev);
-	if (result != DOCA_SUCCESS) {
-		printf("Unable to install SHA device. Reason: %s", doca_error_get_descr(result));
-		result = DOCA_ERROR_INITIALIZATION;
-		return 0;
-	}
-
 	/* Start DOCA RegEx */
 	result = doca_ctx_start(doca_sha_as_ctx(doca_sha_cfg.doca_sha));
 	if (result != DOCA_SUCCESS) {
