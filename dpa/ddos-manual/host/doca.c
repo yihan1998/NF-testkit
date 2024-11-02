@@ -74,7 +74,7 @@ doca_error_t doca_sha_init(void) {
 	}
 
 	/* Create a DOCA RegEx instance */
-	result = doca_sha_create(doca_sha_cfg.dev, &doca_sha_cfg.sha_ctx);
+	result = doca_sha_create(doca_sha_cfg.dev, &doca_sha_cfg.doca_sha);
 	if (result != DOCA_SUCCESS) {
 		printf("DOCA SHA creation Failed. Reason: %s", doca_error_get_descr(result));
 		doca_dev_close(doca_sha_cfg.dev);
