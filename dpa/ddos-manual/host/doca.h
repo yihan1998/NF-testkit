@@ -8,7 +8,7 @@
 
 #include "dpdk.h"
 
-typedef doca_error_t (*jobs_check)(struct doca_devinfo *);
+typedef doca_error_t (*tasks_check)(struct doca_devinfo *);
 
 struct doca_sha_config {
 	char pci_address[DOCA_DEVINFO_PCI_ADDR_SIZE];   /* RegEx PCI address to use */
