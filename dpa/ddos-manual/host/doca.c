@@ -84,13 +84,13 @@ doca_error_t doca_sha_percore_init(struct doca_sha_ctx * sha_ctx) {
 		return 0;
 	}
 
-	result = doca_mmap_create(NULL, &sha_ctx->src_mmap);
+	result = doca_mmap_create(&sha_ctx->src_mmap);
 	if (result != DOCA_SUCCESS) {
 		printf("Unable to create doca_mmap. Reason: %s\n", doca_get_error_string(result));
 		return 0;
 	}
 
-	result = doca_mmap_create(NULL, &sha_ctx->dst_mmap);
+	result = doca_mmap_create(&sha_ctx->dst_mmap);
 	if (result != DOCA_SUCCESS) {
 		printf("Unable to create doca_mmap. Reason: %s\n", doca_get_error_string(result));
 		return 0;
