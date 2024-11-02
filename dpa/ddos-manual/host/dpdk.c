@@ -275,6 +275,221 @@ int dpdk_ports_init(struct application_dpdk_config *app_config) {
     return 0;
 }
 
+static doca_error_t sha_cleanup(struct sha_resources *resources)
+{
+	struct program_core_objects *state = &resources->state;
+	doca_error_t result = DOCA_SUCCESS, tmp_result;
+
+	if (state->pe != NULL && state->ctx != NULL) {
+		tmp_result = doca_ctx_stop(state->ctx);
+		if (tmp_result != DOCA_SUCCESS) {
+			DOCA_LOG_ERR("Failed to destroy DOCA SHA: %s", doca_error_get_descr(tmp_result));
+		}
+
+		state->ctx = NULL;
+	}
+
+	if (resources->sha_ctx != NULL) {
+		tmp_result = doca_sha_destroy(resources->sha_ctx);
+		if (tmp_result != DOCA_SUCCESS) {
+			DOCA_LOG_ERR("Failed to destroy DOCA SHA: %s", doca_error_get_descr(tmp_result));
+		}
+	}
+
+	tmp_result = destroy_core_objects(state);
+	if (tmp_result != DOCA_SUCCESS) {
+		DOCA_LOG_ERR("Failed to destroy DOCA SHA: %s", doca_error_get_descr(tmp_result));
+	}
+
+	return result;
+}
+
+doca_error_t sha_create(char *src_buffer)
+{
+	struct sha_resources resources;
+	struct program_core_objects *state = &resources.state;
+	union doca_data ctx_user_data = {0};
+	struct doca_sha_task_hash *sha_hash_task;
+	struct doca_task *task;
+	union doca_data task_user_data = {0};
+	struct doca_buf *src_doca_buf = NULL;
+	struct doca_buf *dst_doca_buf = NULL;
+	uint8_t *dst_buffer = NULL;
+	uint8_t *dst_buffer_data = NULL;
+	char *sha_output = NULL;
+	uint32_t max_bufs = 2; /* The sample will use 2 doca buffers */
+	uint32_t min_dst_sha_buffer_size;
+	uint64_t max_source_buffer_size;
+	size_t src_buffer_len = strlen(src_buffer);
+	size_t hash_length;
+	size_t i;
+	struct timespec ts = {
+		.tv_sec = 0,
+		.tv_nsec = SLEEP_IN_NANOS,
+	};
+	doca_error_t result, task_result;
+
+	memset(&resources, 0, sizeof(resources));
+
+	/* Open DOCA device that supports SHA */
+	result = open_doca_device_with_capabilities(&sha_hash_is_supported, &state->dev);
+	if (result != DOCA_SUCCESS) {
+		DOCA_LOG_ERR("Unable to open DOCA device for SHA hash task: %s", doca_error_get_descr(result));
+		return result;
+	}
+
+	/* Make sure that the source buffer size is less than the maximum size */
+	result = doca_sha_cap_get_max_src_buf_size(doca_dev_as_devinfo(state->dev), &max_source_buffer_size);
+	if (result != DOCA_SUCCESS) {
+		DOCA_LOG_ERR("Failed to get maximum source buffer size for DOCA SHA: %s", doca_error_get_descr(result));
+		sha_cleanup(&resources);
+		return result;
+	}
+	if (src_buffer_len > max_source_buffer_size) {
+		DOCA_LOG_ERR("User data length %lu exceeds the maximum length %lu for DOCA SHA: %s",
+			     src_buffer_len,
+			     max_source_buffer_size,
+			     doca_error_get_descr(result));
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	result = doca_sha_cap_get_min_dst_buf_size(doca_dev_as_devinfo(state->dev),
+						   SHA_SAMPLE_ALGORITHM,
+						   &min_dst_sha_buffer_size);
+	if (result != DOCA_SUCCESS) {
+		DOCA_LOG_ERR("Failed to get minimum destination buffer size for DOCA SHA: %s",
+			     doca_error_get_descr(result));
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	result = doca_sha_create(state->dev, &resources.sha_ctx);
+	if (result != DOCA_SUCCESS) {
+		DOCA_LOG_ERR("Unable to create sha engine: %s", doca_error_get_descr(result));
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	state->ctx = doca_sha_as_ctx(resources.sha_ctx);
+
+	result = create_core_objects(state, max_bufs);
+	if (result != DOCA_SUCCESS) {
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	/* Connect context to progress engine */
+	result = doca_pe_connect_ctx(state->pe, state->ctx);
+	if (result != DOCA_SUCCESS) {
+		DOCA_LOG_ERR("Failed to connect progress engine to context: %s", doca_error_get_descr(result));
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	result = doca_sha_task_hash_set_conf(resources.sha_ctx,
+					     sha_hash_completed_callback,
+					     sha_hash_error_callback,
+					     LOG_NUM_SHA_TASKS);
+	if (result != DOCA_SUCCESS) {
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	result = doca_ctx_set_state_changed_cb(state->ctx, sha_state_changed_callback);
+	if (result != DOCA_SUCCESS) {
+		DOCA_LOG_ERR("Unable to set SHA state change callback: %s", doca_error_get_descr(result));
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	dst_buffer = calloc(1, min_dst_sha_buffer_size);
+	if (dst_buffer == NULL) {
+		DOCA_LOG_ERR("Failed to allocate memory");
+		sha_cleanup(&resources);
+		return DOCA_ERROR_NO_MEMORY;
+	}
+
+	result = doca_mmap_set_memrange(state->dst_mmap, dst_buffer, min_dst_sha_buffer_size);
+	if (result != DOCA_SUCCESS) {
+		free(dst_buffer);
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	result = doca_mmap_set_free_cb(state->dst_mmap, &free_cb, NULL);
+	if (result != DOCA_SUCCESS) {
+		free(dst_buffer);
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	result = doca_mmap_start(state->dst_mmap);
+	if (result != DOCA_SUCCESS) {
+		free(dst_buffer);
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	result = doca_mmap_set_memrange(state->src_mmap, src_buffer, src_buffer_len);
+	if (result != DOCA_SUCCESS) {
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	result = doca_mmap_start(state->src_mmap);
+	if (result != DOCA_SUCCESS) {
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	/* Construct DOCA source buffer */
+	result = doca_buf_inventory_buf_get_by_data(state->buf_inv,
+						    state->src_mmap,
+						    src_buffer,
+						    src_buffer_len,
+						    &src_doca_buf);
+	if (result != DOCA_SUCCESS) {
+		DOCA_LOG_ERR("Unable to acquire DOCA buffer representing source buffer: %s",
+			     doca_error_get_descr(result));
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	/* Construct DOCA destination buffer */
+	result = doca_buf_inventory_buf_get_by_addr(state->buf_inv,
+						    state->dst_mmap,
+						    dst_buffer,
+						    min_dst_sha_buffer_size,
+						    &dst_doca_buf);
+	if (result != DOCA_SUCCESS) {
+		DOCA_LOG_ERR("Unable to acquire DOCA buffer representing destination buffer: %s",
+			     doca_error_get_descr(result));
+		doca_buf_dec_refcount(src_doca_buf, NULL);
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	/* Include tasks counter in user data of context to be decremented in callbacks */
+	ctx_user_data.ptr = &resources;
+	doca_ctx_set_user_data(state->ctx, ctx_user_data);
+
+	/* Start the context */
+	result = doca_ctx_start(state->ctx);
+	if (result != DOCA_SUCCESS) {
+		doca_buf_dec_refcount(dst_doca_buf, NULL);
+		doca_buf_dec_refcount(src_doca_buf, NULL);
+		sha_cleanup(&resources);
+		return result;
+	}
+
+	return result;
+}
+
+int ddos_detect(struct rte_mbuf * m) {
+
+}
+
 int launch_one_lcore(void * args) {
     int portid;
     struct rte_mbuf * rx_pkts[DEFAULT_PKT_BURST];
@@ -301,6 +516,9 @@ int launch_one_lcore(void * args) {
 					if (iphdr->next_proto_id == IPPROTO_TCP) {
                         struct rte_tcp_hdr * tcphdr = (struct rte_tcp_hdr *)&iphdr[1];
                         print_tcp_header(tcphdr);
+						if (rte_flow_dynf_metadata_avail() && *RTE_FLOW_DYNF_METADATA(m) == 4) {
+							ddos_detect(m);
+						}
                     } else if (iphdr->next_proto_id == IPPROTO_UDP) {
                         struct rte_udp_hdr * udphdr = (struct rte_udp_hdr *)&iphdr[1];
                         print_udp_header(udphdr);

@@ -14,6 +14,118 @@ struct doca_flow_pipe *rss_pipe[2];
 struct doca_flow_pipe *monitor_pipe[2];
 struct doca_flow_pipe_entry *match_entry[2];
 
+struct doca_sha_config doca_sha_cfg = {
+	.pci_address = "03:00.0",
+};
+
+struct worker_context worker_ctx[NR_CPUS];
+__thread struct worker_context * ctx;
+
+doca_error_t doca_sha_init(void) {
+	doca_error_t result;
+
+	/* Open DOCA device */
+	result = open_doca_device_with_pci(doca_sha_cfg.pci_address, NULL, &doca_sha_cfg.dev);
+	if (result != DOCA_SUCCESS) {
+		printf("No device matching PCI address found. Reason: %s", doca_get_error_string(result));
+		return result;
+	}
+
+	/* Create a DOCA RegEx instance */
+	result = doca_sha_create(&(doca_sha_cfg.doca_sha));
+	if (result != DOCA_SUCCESS) {
+		printf("DOCA SHA creation Failed. Reason: %s", doca_get_error_string(result));
+		doca_dev_close(doca_sha_cfg.dev);
+		return DOCA_ERROR_INITIALIZATION;
+	}
+
+	/* Set hw RegEx device to DOCA RegEx */
+	result = doca_ctx_dev_add(doca_sha_as_ctx(doca_sha_cfg.doca_sha), doca_sha_cfg.dev);
+	if (result != DOCA_SUCCESS) {
+		printf("Unable to install SHA device. Reason: %s", doca_get_error_string(result));
+		result = DOCA_ERROR_INITIALIZATION;
+		return 0;
+	}
+
+	/* Start DOCA RegEx */
+	result = doca_ctx_start(doca_sha_as_ctx(doca_sha_cfg.doca_sha));
+	if (result != DOCA_SUCCESS) {
+		printf("Unable to start DOCA RegEx. Reason: %s", doca_get_error_string(result));
+		result = DOCA_ERROR_INITIALIZATION;
+		return 0;
+	}
+
+	return DOCA_SUCCESS;
+}
+
+doca_error_t doca_sha_percore_init(struct doca_sha_ctx * sha_ctx) {
+	doca_error_t result;
+	char * data_buffer;
+
+	src_data_buffer = (char *)calloc(512, sizeof(char));
+	dst_data_buffer = (char *)calloc(512, sizeof(char));
+
+    sha_ctx->src_data_buffer = src_data_buffer;
+    sha_ctx->src_data_buffer_len = 512;
+
+	sha_ctx->dst_data_buffer = dst_data_buffer;
+    sha_ctx->dst_data_buffer_len = 512;
+
+	result = doca_buf_inventory_create(NULL, 2, DOCA_BUF_EXTENSION_NONE, &sha_ctx->buf_inv);
+	if (result != DOCA_SUCCESS) {
+		printf("Unable to create doca_buf_inventory. Reason: %s\n", doca_get_error_string(result));
+		return 0;
+	}
+
+	result = doca_buf_inventory_start(sha_ctx->buf_inv);
+	if (result != DOCA_SUCCESS) {
+		printf("Unable to start doca_buf_inventory. Reason: %s\n", doca_get_error_string(result));
+		return 0;
+	}
+
+	result = (NULL, &sha_ctx->mmap);
+	if (result != DOCA_SUCCESS) {
+		printf("Unable to create doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		return 0;
+	}
+
+	result = doca_mmap_dev_add(sha_ctx->mmap, sha_ctx->dev);
+	if (result != DOCA_SUCCESS) {
+		printf("Unable to add device to doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		return 0;
+	}
+
+	result = doca_mmap_set_memrange(sha_ctx->mmap, data_buffer, 8192);
+	if (result != DOCA_SUCCESS) {
+		printf("Unable to register src memory with doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		return 0;
+	}
+
+	// result = doca_mmap_set_memrange(sha_ctx->mmap, sha_ctx->dst_data_buffer, sha_ctx->dst_data_buffer_len);
+	// if (result != DOCA_SUCCESS) {
+	// 	printf("Unable to register dest memory with doca_mmap. Reason: %s\n", doca_get_error_string(result));
+	// 	return 0;
+	// }
+
+	result = doca_mmap_start(sha_ctx->mmap);
+	if (result != DOCA_SUCCESS) {
+		printf("Unable to start doca_mmap. Reason: %s\n", doca_get_error_string(result));
+		return 0;
+	}
+
+	if (doca_buf_inventory_buf_by_addr(sha_ctx->buf_inv, sha_ctx->mmap, sha_ctx->src_data_buffer, sha_ctx->src_data_buffer_len, &sha_ctx->src_buf) != DOCA_SUCCESS) {
+        printf("Failed to create inventory buf!\n");
+        return 0;
+    }
+
+	if (doca_buf_inventory_buf_by_addr(sha_ctx->buf_inv, sha_ctx->mmap, sha_ctx->dst_data_buffer, sha_ctx->dst_data_buffer_len, &sha_ctx->dst_buf) != DOCA_SUCCESS) {
+        printf("Failed to create inventory buf!\n");
+        return 0;
+    }
+
+    return DOCA_SUCCESS;
+}
+
 static doca_error_t create_classifier_pipe(struct doca_flow_port *port, struct doca_flow_pipe **pipe)
 {
 	struct doca_flow_pipe_cfg *pipe_cfg;
@@ -229,7 +341,7 @@ static doca_error_t add_monitor_pipe_entry(struct doca_flow_pipe *pipe, int port
 
 	monitor.counter_type = DOCA_FLOW_RESOURCE_TYPE_NON_SHARED;
 
-	actions.meta.pkt_meta = 1;
+	actions.meta.pkt_meta = 4;
 	actions.action_idx = 0;
 
 	fwd.type = DOCA_FLOW_FWD_PIPE;
@@ -268,6 +380,7 @@ static doca_error_t add_monitor_pipe_entry(struct doca_flow_pipe *pipe, int port
 
 doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 {
+	int nb_cores = app_dpdk_config->port_config.nb_cores;
 	int nb_ports = app_dpdk_config->port_config.nb_ports;
     int nb_queues = app_dpdk_config->port_config.nb_queues;
 	struct flow_resources resource = {.nr_counters = 64};
@@ -365,6 +478,11 @@ doca_error_t doca_init(struct application_dpdk_config *app_dpdk_config)
 			return DOCA_ERROR_BAD_STATE;
 		}
 	}
+
+    for (int i = 0; i < nb_cores; i++) {
+        struct worker_context * ctx = &worker_ctx[i];
+        doca_worker_init(ctx);
+    }
 
 	return result;
 }

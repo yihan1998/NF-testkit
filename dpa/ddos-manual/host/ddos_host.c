@@ -724,6 +724,7 @@ int main(int argc, char ** argv)
 		.port_config.nb_queues = 4,
 		.port_config.nb_hairpin_q = 4,
 		.reserve_main_thread = false,
+		.port_config.enable_mbuf_metadata = 1,
 	};
 
 	printf("Init DPDK...\n");
