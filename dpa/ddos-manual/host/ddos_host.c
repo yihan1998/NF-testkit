@@ -344,6 +344,7 @@ int create_rx_table(struct app_config *app_cfg)
 	/* Fill match mask, match on all source mac bits */
 	DEVX_SET(dr_match_spec, match_mask->match_buf, dmac_47_16, 0xffffffff);
 	DEVX_SET(dr_match_spec, match_mask->match_buf, dmac_15_0, 0xffff);
+	DEVX_SET(dr_match_spec, match_mask->match_buf, udp_dport, 0xffff);
 
 	result = create_flow_table(app_cfg->rx_domain,
 				   0, /* Table level */
@@ -402,6 +403,7 @@ int create_steering_rule_rx(struct app_config *app_cfg, struct dpa_process_conte
 	/* Fill rule match, match on source mac address with this value */
 	DEVX_SET(dr_match_spec, match_mask->match_buf, dmac_47_16, (ctx->mac_addr) >> 16);
 	DEVX_SET(dr_match_spec, match_mask->match_buf, dmac_15_0, (ctx->mac_addr) % (1 << 16));
+	DEVX_SET(dr_match_spec, match_mask->match_buf, udp_dport, 53);
 	ctx->rx_rule->dr_rule = mlx5dv_dr_rule_create(app_cfg->rx_flow_table->dr_matcher, match_mask, actions_len, actions);
 	if (ctx->rx_rule->dr_rule == NULL) {
 		printf("Failed to create RX rule [%d]\n", errno);
